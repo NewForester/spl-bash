@@ -1,0 +1,68 @@
+#!/bin/bash --posix
+
+##
+##  Goal:   semi-automate system configuration of an anti-virus scanner
+##
+##  Use:    source sysconf-avscan
+##
+##  NB:     The caller must source functions etc à la sysconf script.
+##
+
+# do it
+
+function avscanConf
+{
+    case "$1" in
+      (32 | avscan)
+        listOptions 32 avscan;
+        quit;
+        ;;
+
+      (32.1 | avscanInstall)
+        step="32.1 avscanInstall";
+        note "Install clamav packages ...";
+
+        installPackage clamav;
+        DoOrDie SaveCurrent /etc/{group,passwd};
+        ;;
+
+      (32.2 | avscanConfigure)
+        step="32.2 avscanConfigure";
+        note "Configure anti-virus ...";
+
+        DoOrDie InstallOurOwn /etc/logrotate.d/avscan;
+        DoOrDie InstallOurOwn /etc/avscan/{avscan-fs,avscan-mtab};
+
+        DoOrDie CopyToKeep /etc/crontab;
+        DoOrDie ApplyPatch /etc/crontab;
+        ;;
+
+      (32.99)
+        step="32.99 sanityCheck";
+        note "Checking avscan ...";
+        ListLoggedSteps ${1%.*} | while read step name status; do
+            echo -e $step $name $status;
+            case "$step $name" in
+              ("32.2 avscanConfigure")
+                CheckOurOwn /etc/logrotate.d/avscan;
+                CheckOurOwn /etc/avscan/{avscan-fs,avscan-mtab};
+                CheckOriginal /etc/crontab;
+                CheckPatch --opt /etc/crontab;
+                CheckCurrent /etc/{group,passwd};
+               ;;
+            esac
+        done
+        quit;
+        ;;
+
+      (*)
+        badOption "$1";
+        listOptions 32 avscan;
+        quit 1;
+        ;;
+    esac
+}
+
+### Local Variables: ***
+### mode:ksh ***
+### End: ***

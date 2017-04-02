@@ -1,0 +1,95 @@
+#!/bin/bash --posix
+
+##
+##  Goal:   semi-automate system configuration of grub
+##
+##  Use:    source sysconf-grub
+##
+##  NB:     The caller must source functions etc à la sysconf script.
+##
+
+# do it
+
+function grubConf
+{
+    local map="/boot/grub/device.map";
+    local cfg="/boot/grub/grub.cfg";
+
+    case "$1" in
+      (2 | grub)
+        listOptions 2 grub;
+        quit;
+        ;;
+
+      (2.1 | grubWithoutUsb)
+        step="2.1 grubWithoutUsb";
+        note "Regenerate grub boot list without the USB ...";
+
+        DoOrDie sudo rm -f "${map}";
+        DoOrDie sudo update-grub;
+
+        local file;
+        for file in "${cfg}" "${map}"; do
+            if [[ -e ${file} ]]; then
+                DoOrDie cp -pf "${file}" "keep${file}.nousb";
+            fi
+        done
+        ;;
+
+      (2.2 | grubNoProbe)
+        step="2.2 grubNoProbe";
+        note "Regenerate grub boot list without hard drive ...";
+
+        DoOrDie CopyToKeep /etc/grub.d/30_os-prober;
+        DoOrDie InstallOurOwn /etc/grub.d/30_os-prober;
+
+        DoOrDie sudo rm "${map}";
+        DoOrDie sudo update-grub;
+        ;;
+
+      (2.3 | grubNoAcpi)
+        step="2.3 grubNoAcpi";
+        note "Regenerate grub boot list with acpi=off ...";
+
+        DoOrDie CopyToKeep /etc/default/grub;
+        DoOrDie ApplyPatch /etc/default/grub;
+
+        DoOrDie sudo update-grub;
+
+        DoOrDie cp -pf "${cfg}" "keep${cfg}.noacpi";
+        ;;
+
+      (2.99)
+        step="2.99 sanityCheck";
+        note "Checking grub ...";
+        ListLoggedSteps ${1%.*} | while read step name status; do
+            echo -e $step $name $status;
+            case "$step $name" in
+              ("2.1 grubWithoutUsb")
+                CheckOriginal --nousb "${cfg}" "${map}";
+                ;;
+              ("2.2 grubNoProbe")
+                CheckOriginal /etc/grub.d/30_os-prober;
+                CheckOurOwn /etc/grub.d/30_os-prober;
+                ;;
+              ("2.3 grubNoAcpi")
+                CheckOriginal /etc/default/grub;
+                CheckPatch /etc/default/grub;
+                CheckOriginal --noacpi "${cfg}";
+                ;;
+            esac
+        done
+        quit;
+        ;;
+
+      (*)
+        badOption "$1";
+        listOptions 2 grub;
+        quit 1;
+        ;;
+    esac
+}
+
+### Local Variables: ***
+### mode:ksh ***
+### End: ***

@@ -1,0 +1,47 @@
+#!/bin/bash --posix
+
+##
+##  Goal:   semi-automate system configuration of the desktop plugins
+##
+##  Use:    source sysconf-plugins
+##
+##  NB:     The caller must source functions etc à la sysconf script.
+##
+
+# do it
+
+function pluginsConf
+{
+    case "$1" in
+      (31 | plugins)
+        listOptions 31 plugins;
+        quit;
+        ;;
+
+      (31.1 | pluginsXfce)
+        step="31.1 pluginsXfce";
+        note "Ensure needed XFCE plugins are installed ...";
+
+        installPackage xfce4-diskperf-plugin xfce4-netload-plugin xfce4-systemload-plugin;
+        ;;
+
+      (31.99)
+        step="31.99 sanityCheck";
+        note "Checking plugins ...";
+        ListLoggedSteps ${1%.*} | while read step name status; do
+            echo -e $step $name $status;
+        done
+        quit;
+        ;;
+
+      (*)
+        badOption "$1";
+        listOptions 31 plugins;
+        quit 1;
+        ;;
+    esac
+}
+
+### Local Variables: ***
+### mode:ksh ***
+### End: ***

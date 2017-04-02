@@ -1,0 +1,132 @@
+#!/bin/bash --posix
+
+##
+##  Goal:   semi-automate system configuration of local mail
+##
+##  Use:    source sysconf-mail
+##
+##  NB:     The caller must source functions etc à la sysconf script.
+##
+
+# do it
+
+function mailConf
+{
+    case "$1" in
+      (19 | mail)
+        listOptions 19 mail;
+        quit;
+        ;;
+
+      (19.1 | mailInstall)
+        step="19.1 mailInstall";
+        note "Install dovecot MDA software ...";
+
+        installPackage dovecot-imapd;
+        DoOrDie SaveCurrent /etc/{group,passwd};
+        ;;
+
+      (19.2 | mailConfigure)
+        step="19.2 mailConfigure";
+        note "Configure dovecot MDA ...";
+
+        if [[ ! -b "/dev/${HOSTNAME}/share_mail" ]]; then
+            note "Mail volume does not exist ... bailing";
+            quit 1;
+        fi
+
+        if ! mountpoint -q "/media/local/mail"; then
+            note "Mail volume not a mount point ... bailing";
+            quit 1;
+        fi
+
+        DoOrDie mkdir -p "/media/local/mail/${USER}";
+        DoOrDie sudo mkdir -p "/var/dovecot/indexes/${USER}";
+        DoOrDie sudo chown "${USER}" "/var/dovecot/indexes/${USER}";
+
+        DoOrDie InstallOurOwn /etc/dovecot/local.conf;
+        DoOrDie sudo service dovecot restart;
+
+        note "Configure exim4 MTA as a local MTA ...";
+
+        DoOrDie InstallOurOwn /etc/exim4/conf.d/transport/37_exim4-config_dovecot_delivery;
+        DoOrDie sudo update-exim4.conf.template --run;
+
+        DoOrDie CopyToKeep /etc/exim4/update-exim4.conf.conf;
+
+        local keep=keep/etc/exim4/update-exim4.conf.conf;
+        DoOrDie cp -p "${keep}".$RELEASE "${keep}";
+        DoOrDie sed -i "${keep}" -e "\"/dc_other_hostnames=/s/'.*'/'mail.custards.lan ; $HOSTNAME.custards.lan'/\"";
+        DoOrDie sed -i "${keep}" -e "\"/dc_local_interfaces=/s/'.*'/'127.0.0.1 ; $(LanAddress) ; ::1'/\"";
+        DoOrDie sed -i "${keep}" -e "\"/dc_localdelivery=/s/'.*'/'dovecot_delivery'/\"";
+
+        DoOrDie Deploy /etc/exim4/update-exim4.conf.conf;
+
+        DoOrDie sudo update-exim4.conf;
+        DoOrDie sudo service exim4 restart;
+
+        note "Set /etc/aliases to forward e-mail ...";
+        DoOrDie CopyToKeep /etc/aliases;
+        DoOrDie ApplyPatch /etc/aliases;
+        ;;
+
+      (19.3 | mailSatellite)
+        step="19.3 mailSatellite";
+        note "Configure exim4 as a satellite MTA ...";
+
+        DoOrDie CopyToKeep /etc/exim4/update-exim4.conf.conf;
+
+        local keep=keep/etc/exim4/update-exim4.conf.conf;
+        DoOrDie cp -p "${keep}".$RELEASE "${keep}";
+        DoOrDie sed -i "${keep}" -e "\"/dc_eximconfig_configtype=/s/'.*'/'satellite'/\"";
+        DoOrDie sed -i "${keep}" -e "\"/dc_readhost=/s/'.*'/'$HOSTNAME.custards.lan'/\"";
+        DoOrDie sed -i "${keep}" -e "\"/dc_smarthost=/s/'.*'/'mail.custards.lan'/\"";
+        DoOrDie sed -i "${keep}" -e "\"/dc_hide_mailname=/s/'.*'/'true'/\"";
+
+        DoOrDie Deploy /etc/exim4/update-exim4.conf.conf;
+
+        DoOrDie sudo update-exim4.conf;
+        DoOrDie sudo service exim4 restart;
+
+        note "Set /etc/aliases to forward e-mail ...";
+        DoOrDie CopyToKeep /etc/aliases;
+        DoOrDie ApplyPatch /etc/aliases;
+        ;;
+
+      (19.99)
+        step="19.99 sanityCheck";
+        note "Checking mail ...";
+        ListLoggedSteps ${1%.*} | while read step name status; do
+            echo -e $step $name $status;
+            case "$step $name" in
+              ("19.2 mailConfigure")
+                CheckOurOwn /etc/dovecot/local.conf;
+                CheckOriginal /etc/exim4/conf.d/transport/37_exim4-config_dovecot_delivery;
+                CheckOurOwn /etc/exim4/conf.d/transport/37_exim4-config_dovecot_delivery;
+                CheckOriginal /etc/exim4/update-exim4.conf.conf;
+                CheckDeployed /etc/exim4/update-exim4.conf.conf;
+                CheckOriginal /etc/aliases;
+                CheckPatch /etc/aliases;
+                ;;
+              ("19.3 mailSatellite")
+                CheckOriginal /etc/exim4/update-exim4.conf.conf;
+                CheckDeployed /etc/exim4/update-exim4.conf.conf;
+                CheckOriginal /etc/aliases;
+                CheckPatch /etc/aliases;
+                ;;
+            esac
+        done
+        quit;
+        ;;
+
+      (*)
+        badOption "$1";
+        listOptions 19 mail;
+        quit 1;
+        ;;
+    esac
+}
+
+### Local Variables: ***
+### mode:ksh ***
+### End: ***

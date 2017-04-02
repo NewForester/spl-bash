@@ -1,0 +1,243 @@
+#!/bin/bash --posix
+
+##
+##  Goal:   semi-automate system configuration of network interfaces and manager
+##
+##  Use:    source sysconf-net
+##
+##  NB:     The caller must source functions etc à la sysconf script.
+##
+
+# do it
+
+function netConf
+{
+    local junk file needmap;
+
+    case "$1" in
+      (10 | net)
+        listOptions 10 net;
+        quit;
+        ;;
+
+      (10.1 | netWicdInstall)
+        step="10.1 netWicdInstall";
+        note "Install wicd ...";
+
+        if [[ -h /etc/resolv.conf ]]; then
+           # Fix ubuntu brain death
+           local link=$(ls -ld /etc/resolv.conf | sed -e "s/.*-> //");
+           if [[ "${link:0:2}" == ".." ]]; then
+                DoOrDie sudo rm /etc/resolv.conf;
+                DoOrDie sudo ln -s ${link:2} /etc/resolv.conf;
+           fi
+        fi
+
+        installPackage wicd;
+        ;;
+
+      (10.1.D | netWicdDesktop)
+        step="10.1.D netWicdDesktop";
+        note "Configure wicd for desktop operation ...";
+
+        for file in $(ls /etc/wicd/*-settings.conf 2> /dev/null); do
+            DoOrDie CopyToKeep --sudo ${file};
+        done
+
+        DoOrDie sudo service wicd stop;
+        DoOrDie alternative=desktop;
+        DoOrDie InstallOurOwn --sudo /etc/wicd/{manager,wired,wireless}-settings.conf;
+        DoOrDie sudo service wicd start;
+       ;;
+
+      (10.1.L | netWicdLaptop)
+        step="10.1.L netWicdLaptop";
+        note "Configure wicd for laptop operation ...";
+
+        for file in $(ls /etc/wicd/*-settings.conf 2> /dev/null); do
+            DoOrDie CopyToKeep --sudo ${file};
+        done
+
+        DoOrDie sudo service wicd stop;
+        DoOrDie alternative=laptop;
+        DoOrDie InstallOurOwn --sudo /etc/wicd/{manager,wired,wireless}-settings.conf;
+        DoOrDie sudo service wicd start;
+       ;;
+
+      (10.2 | netNetworkManager)
+        step="10.2 netNetworkManager";
+        note "Disable the network manager ...";
+
+        echo "... backup original interfaces";
+        if [[ -e /etc/network/interfaces.bak-0 ]]; then
+            DoOrDie sudo mv /etc/network/interfaces{.bak-0,};   # undo brain death
+        fi
+
+        DoOrDie CopyToKeep /etc/network/interfaces;
+        DoOrDie chmod 600 "keep/etc/network/interfaces.${RELEASE}";
+
+        if [[ -e /etc/init.d/network-manager ]]; then
+            echo "... nobble the NetworkManager";
+            DoOrDie InstallOurOwn /etc/default/NetworkManager;
+            DoOrDie sudo service network-manager stop;
+        fi
+
+        fini="you really should reboot at this point"
+        ;;
+
+      (10.3 | netLoopback)
+        step="10.3 netLoopback";
+        note "Configure only loopback network ...";
+
+        DoOrDie InstallOurOwn /etc/network/interfaces.lo;
+
+        DoOrDie sudo ln -sf interfaces.lo /etc/network/interfaces;
+        ;;
+
+      (10.4 | netWired)
+        step="10.4 netWired";
+        note "Configure wired network operation ...";
+
+        DoOrDie InstallOurOwn /etc/network/interfaces.eth0;
+
+        local if0;
+        for if0 in br0 eth0 wlan0; do
+            fgrep -q ${if0} /etc/network/run/ifstate && DoOrDie sudo ifdown ${if0};
+        done
+
+        DoOrDie sudo ln -sf interfaces.eth0 /etc/network/interfaces;
+        DoOrDie sudo ifup eth0;
+        ;;
+
+      (10.4.B | netBridged)
+        step="10.4.B netBridged";
+        note "Configure bridged network operation ...";
+
+        DoOrDie InstallOurOwn /etc/network/interfaces.br0;
+
+        local if0;
+        for if0 in br0 eth0 wlan0; do
+            fgrep -q ${if0} /etc/network/run/ifstate && DoOrDie sudo ifdown ${if0};
+        done
+
+        DoOrDie sudo ln -sf interfaces.br0 /etc/network/interfaces;
+        DoOrDie sudo ifup br0;
+        ;;
+
+      (10.5 | netWifi)
+        step="10.5 netWifi";
+        note "Configure /etc/network/interfaces for WIFI ...";
+
+        DoOrDie InstallOurOwn /etc/network/interfaces.wifi;
+        DoOrDie InstallOurOwn /etc/network/wifi-map;
+
+        while read junk file; do
+            [[ "${junk}" != "source" ]] && continue;
+
+            DoOrDie InstallOurOwn "/etc/network/${file}";
+        done < keep/etc/network/interfaces.wifi
+
+        local if0;
+        for if0 in br0 eth0 wlan0; do
+            fgrep -q ${if0} /etc/network/run/ifstate && DoOrDie sudo ifdown ${if0};
+        done
+
+        DoOrDie sudo ln -sf interfaces.wifi /etc/network/interfaces;
+        DoOrDie sudo ifup wlan0;
+        ;;
+
+      (10.6 | netInterfaces)
+        step="10.6 netInterfaces";
+        note "Configure network interfaces ...";
+
+        DoOrDie InstallOurOwn /etc/network/interfaces;
+
+        while read junk file; do
+            [[ "${junk}" != "source" ]] && continue;
+
+            if [[ -r "${file}" ]]; then
+                DoOrDie InstallOurOwn "${file}";
+            else
+                DoOrDie InstallOurOwn --sudo "${file}";
+            fi
+
+            if [[ "${file/wifi-/}" != "${file}" ]]; then
+                needmap=1;
+            fi
+        done < keep/etc/network/interfaces
+
+        if [[ -n "${needmap}" ]]; then
+            DoOrDie InstallOurOwn /etc/network/wifi-map;
+        else
+            DoOrDie RemoveOurOwn /etc/network/wifi-map;
+        fi
+
+        local state;
+        for state in $(cat /etc/network/run/ifstate); do
+            if [[ "${state%=*}" != "lo" ]]; then
+                DoOrDie sudo ifdown "${state%=*}";
+            fi
+        done
+
+        DoOrDie sudo ifup -a;
+        DoOrDie sudo ifup -a --allow=default;
+
+        fini="you may need to adjust you wicd configuration to use br0 instead of eth0"
+        ;;
+
+      (10.99)
+        step="10.99 sanityCheck";
+        note "Checking net ...";
+        ListLoggedSteps ${1%.*} | while read step name status; do
+            echo -e $step $name $status
+            case "$step $name" in
+              ("10.1.D netWicdDesktop" | "10.1.L netWicdLaptop")
+                CheckOriginal --sudo /etc/wicd/*-settings.conf;
+                local file;
+                for file in $(ls /etc/wicd/*-settings.conf 2> /dev/null); do
+                    if [[ -e "keep/${file}" ]]; then
+                        DoOrDieLocal sudo inisort "${file}" '|' sudo diff - "keep${file}";
+                    else
+                        error "keep/${file}" missing;
+                    fi
+                done
+                ;;
+              ("10.2 netNetworkManager")
+                CheckOriginal /etc/network/interfaces;
+                CheckOurOwn /etc/default/NetworkManager;
+                ;;
+              ("10.6 netInterfaces")
+                CheckOurOwn /etc/network/interfaces;
+                while read junk file; do
+                    [[ "${junk}" != "source" ]] && continue;
+
+                    if [[ "${file/wifi-/}" != "${file}" ]]; then
+                        needmap=1;
+                    fi
+                    if [[ -r "${file}" ]]; then
+                        CheckOurOwn "${file}";
+                    else
+                        CheckOurOwn --sudo "${file}";
+                    fi
+                done < /etc/network/interfaces
+
+                if [[ -n "${needmap}" ]]; then
+                    CheckOurOwn /etc/network/wifi-map;
+                fi
+                ;;
+            esac
+        done
+        quit;
+        ;;
+
+      (*)
+        badOption "$1";
+        listOptions 10 net;
+        quit 1;
+        ;;
+    esac
+}
+
+### Local Variables: ***
+### mode:ksh ***
+### End: ***

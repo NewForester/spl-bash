@@ -1,0 +1,253 @@
+#!/bin/bash --posix
+
+##
+##  Goal:   semi-automate system configuration of samba
+##
+##  Use:    source sysconf-samba
+##
+##  NB:     The caller must source functions etc à la sysconf script.
+##
+
+# do it
+
+function smbUpdate
+{
+    local abortok answer;
+
+    cd keep/etc/samba > /dev/null;
+
+        [[ -r smb.conf.patch ]] || exit 1;
+        [[ -r smb.conf.shares ]] || exit 1;
+
+        echo "... preparing ...";
+        [[ -r smb.conf.old ]] && mv smb.conf.old smb.conf;
+
+        case "$1" in
+          ("install")
+            cp -p /etc/samba/smb.conf .;
+            cp -p smb.conf{,.${RELEASE}};
+            ;;
+          ("update")
+            cp -p smb.conf{,.old};
+            cp -p /etc/samba/smb.conf .;
+            cp -p smb.conf{,.${RELEASE}};
+            ;;
+          ("patch" | "share")
+            cp -p smb.conf{,.old};
+            cp -p smb.conf{.${RELEASE},};
+            ;;
+          (*)
+            error "Do not know how to \"${update}\" ...";
+            note "... bailing";
+            exit 1;
+        esac
+
+        echo "... patch package maintainer's smb.conf ...";
+        rm -f smb.conf.rej smb.conf.orig;
+        patch < smb.conf.patch || exit 1;
+        sed -i smb.conf -e "/workgroup =/d" -e "/server string =/d" || exit 1;
+
+        echo "... add host specific shares ...";
+        cat smb.conf smb.conf.shares > smb.conf.master || exit 1;
+
+        echo "... patch server string ...";
+        sed -i smb.conf.master -e "/server string = /s~/etc/issue.net~$(cat /etc/issue.net)~" || exit 1;
+
+        echo "... generating new smb.conf ...";
+        yes | testparm smb.conf.master > smb.conf || exit 1;
+
+        # double check with user
+
+        if [[ ! -r smb.conf.old ]]; then
+            less smb.conf;
+        elif cmp -s smb.conf{,.old}; then
+            note "... effectively no change ...";
+            mv smb.conf{.old,};
+            if ! cmp -s smb.conf /etc/samba/smb.conf; then
+                note "... but deployment necessary";
+            else
+                abortok="y";
+            fi
+        else
+            diff -Naur smb.conf.old smb.conf;
+        fi
+
+        read -p "Deploy new configuration [y/n] ? " answer;
+        answer="${answer,}";
+
+        if [[ "${answer#y}" == "${answer}" ]]; then
+            note "... aborting ...";
+            [[ -r smb.conf.old ]] && mv smb.conf{.old,};
+            [[ "${abortok}" != "y" ]] && exit 1;
+            return 0;
+        else
+            note "... deploying ...";
+            rm -f smb.conf.orig smb.conf.old;
+
+            DoOrDie Deploy /etc/samba/smb.conf;
+        fi
+
+        if [[ -e /etc/init.d/smbd ]]; then
+            DoOrDie sudo service smbd reload;
+        elif [[ -e /etc/init.d/samba ]]; then
+            DoOrDie sudo service samba reload;
+        fi
+
+    cd - > /dev/null;
+    return 0;
+}
+
+function updateRelease
+{
+    if [[ ! -e "$1" ]]; then
+        local old reply;
+
+        if ls "${1/%?/}"? &> /dev/null; then
+            for old in $(ls -r "${1/%?/}"?); do
+                if [[ ! -h "${old}" ]]; then
+                    break;
+                fi
+            done
+
+            old="${old##*/}";
+            note ${old};
+            read -p "Old release copy good ? [y/n] " reply;
+            if [[ "${reply^}" == "Y" ]]; then
+                ln -sf ${old} ${1};
+            fi
+        fi
+    fi
+}
+
+function sambaConf
+{
+    case "$1" in
+      (13 | samba)
+        listOptions 13 samba;
+        quit;
+        ;;
+
+      (13.1 | sambaInstall)
+        step="13.1 sambaInstall";
+        note "Install samba packages ...";
+
+        installPackage samba-common smbclient samba cifs-utils;
+
+        cp -pf /etc/group keep/etc;
+        ;;
+
+      (13.2 | sambaConfigure)
+        step="13.2 sambaConfigure";
+        note "Configure samba ...";
+
+        echo "... install lmhosts";
+        DoOrDie InstallOurOwn /etc/samba/lmhosts;
+
+        echo "... fetch our configuration files";
+        DoOrDie FetchOurOwn /etc/samba/smb.conf.{patch,shares};
+
+        echo "... checking samba configuration";
+
+        cd keep/etc/samba > /dev/null;
+
+            updateRelease "smb.conf.${RELEASE}";
+
+            if [[ ! -r "smb.conf.${RELEASE}" ]]; then
+                if [[ ! -r smb.conf ]]; then
+                    note "... looks like a new installation";
+                    fini="suggest: sysconf sambaConfInstall";
+                elif ! cmp -s smb.conf /etc/samba/smb.conf; then
+                    note "... looks like a package update";
+                    fini="suggest: sysconf sambaConfUpdate";
+                else
+                    note "... nothing seems to have changed";
+                fi
+            else
+                if ! cmp -s smb.conf /etc/samba/smb.conf; then
+                    note "... looks like a package update";
+                    fini="suggest: sysconf sambaConfUpdate";
+                elif [[ smb.conf.patch -nt smb.conf ]]; then
+                    note "... looks like a patch change";
+                    fini="suggest: sysconf sambaConfPatch";
+                elif [[ smb.conf.shares -nt smb.conf ]]; then
+                    note "... looks like a share change";
+                    fini="suggest: sysconf sambaConfShare";
+                else
+                    note "... nothing seems to have changed";
+                fi
+            fi
+
+        cd - > /dev/null;
+        ;;
+
+      (13.3 | sambaPasswords)
+        step="13.3 sambaPasswords";
+        note "Create samba password (tdbsam) database ...";
+
+        CopyToKeep --sudo /var/lib/samba/passdb.tdb;
+        InstallOurOwn --sudo /var/lib/samba/passdb.tdb;
+        ;;
+
+      (13.4.I | sambaConfInstall)
+        step="13.4.I sambaConfInstall";
+        note "Generate samba configuration for new installation ...";
+
+        smbUpdate "install";
+        ;;
+
+      (13.4.U | sambaConfUpdate)
+        step="13.4.U sambaConfUpdate";
+        note "Regenerate samba configuration after package upgrade ...";
+
+        smbUpdate "update";
+        ;;
+
+      (13.4.P | sambaConfPatch)
+        step="13.4.P sambaConfPatch";
+        note "Regenerate samba configuration after patch change ...";
+
+        smbUpdate "patch";
+        ;;
+
+      (13.4.S | sambaConfShare)
+        step="13.4.S sambaConfShare";
+        note "Regenerate samba configuration after share change ...";
+
+        smbUpdate "share";
+        ;;
+
+      (13.99)
+        step="13.99 sanityCheck";
+        note "Checking samba ...";
+        ListLoggedSteps ${1%.*} | while read step name status; do
+            case "$step $name" in
+              ("13.1 sambaInstall")
+                ;;
+              ("13.2 sambaConfigure")
+                CheckOurOwn /etc/samba/lmhosts;
+                CheckMaster /etc/samba/smb.conf.{patch,shares};
+                ;;
+              ("13.3 sambaPasswords")
+                CheckOriginal --sudo /var/lib/samba/passdb.tdb;
+                CheckOurOwn --sudo /var/lib/samba/passdb.tdb;
+                ;;
+              ("13.4.I sambaConfInstall" | "13.4.U sambaConfUpdate" | "13.4.P sambaConfPatch" | "13.4.S sambaConfShare")
+                CheckDeployed /etc/samba/smb.conf;
+                ;;
+            esac
+            echo -e $step $name $status;
+        done
+        quit;
+        ;;
+
+      (*)
+        badOption "$1";
+        listOptions 13 samba;
+        quit 1;
+        ;;
+    esac
+}
+
+### Local Variables: ***
+### mode:ksh ***
+### End: ***

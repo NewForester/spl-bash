@@ -1,0 +1,93 @@
+#!/bin/bash --posix
+
+##
+##  Goal:   semi-automate system configuration of deluge bit-torrent software
+##
+##  Use:    source sysconf-deluge
+##
+##  NB:     The caller must source functions etc à la sysconf script.
+##
+
+# do it
+
+function delugeConf
+{
+    local wwwRoot=/media/work/www-data;
+    local delugeRoot="${wwwRoot}/deluge";
+
+    case "$1" in
+      (28 | deluge)
+        listOptions 28 deluge;
+        quit;
+        ;;
+
+      (28.1 | delugeInstall)
+        step="28.1 delugeInstall";
+        note "Install deluge packages ...";
+
+        installPackage deluged deluge-web;
+        ;;
+
+      (28.2 | delugeConfigure)
+        step="28.2 delugeConfigure";
+        note "Configure deluge daemon and server ...";
+
+        if ! mountpoint "${wwwRoot}" > /dev/null; then
+            note ... oops ... "${wwwRoot}" is not a mountpoint;
+            exit 1;
+        fi
+
+        DoOrDie sudo -u www-data mkdir -p "${delugeRoot}/${HOSTNAME}/"{,downloads,torrents};
+
+        DoOrDie sudo mkdir -p /var/log/deluge;
+        DoOrDie sudo chown www-data:www-data /var/log/deluge;
+
+        addToGroup "${USER}" www-data;
+        addToGroup www-data users;
+        DoOrDie SaveCurrent /etc/group;
+
+        DoOrDie InstallOurOwn /etc/{default,init.d,logrotate.d}/deluge;
+        DoOrDie sudo update-rc.d deluge defaults;
+        ;;
+
+      (28.3.D | delugeDisable)
+        step="28.3.D delugeDisable";
+        note "Disable deluge daemon and server ...";
+
+        DoOrDie sudo invoke-rc.d deluge stop;
+        DoOrDie sudo update-rc.d deluge disable;
+        ;;
+
+      (28.3.E | delugeEnable)
+        step="28.3.E delugeEnable";
+        note "Enable deluge daemon and server ...";
+
+        DoOrDie sudo update-rc.d deluge enable;
+        DoOrDie sudo invoke-rc.d deluge start;
+        ;;
+
+      (28.99)
+        step="28.99 sanityCheck";
+        note "Checking deluge ...";
+        ListLoggedSteps ${1%.*} | while read step name status; do
+            echo -e $step $name $status;
+            case "$step $name" in
+              ("28.2 delugeConfigure")
+                CheckOurOwn /etc/{default,init.d,logrotate.d}/deluge;
+                CheckCurrent /etc/{group,passwd};
+                ;;
+            esac
+        done
+        quit;
+
+      (*)
+        badOption "$1";
+        listOptions 28 deluge;
+        quit 1;
+        ;;
+    esac
+}
+
+### Local Variables: ***
+### mode:ksh ***
+### End: ***

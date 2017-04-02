@@ -1,0 +1,278 @@
+#!/bin/bash --posix
+
+##
+##  Goal:   semi-automate system configuration of moinmoin wiki software
+##
+##  Use:    source sysconf-moin
+##
+##  NB:     The caller must source functions etc à la sysconf script.
+##
+
+# do it
+
+function restoreWiki
+{
+    local junk backup site address;
+
+    local moinRoot="$1"; shift;
+
+    echo "... stopping the standalone server";
+    DoOrDie sudo service moin stop;
+
+    # remove unwanted language packs
+    junk="${moinRoot}/mywiki/underlay/pages/LanguageSetup/attachments/";
+    if [[ -d "${junk}" ]]; then
+        DoOrDie sudo rm -fr "${junk}";
+    fi
+
+    backup=/media/share/backup/current/wiki-$1.tgz;
+    if [[ -d "${moinRoot}/$1" ]]; then
+        DoOrDie sudo -u www-data rm -r ${moinRoot}/$1;
+    fi
+    if [[ -r "${backup}" ]]; then
+        echo "... restore backup of the $1 wiki";
+        DoOrDie sudo -u www-data tar -xzf ${backup} --exclude=text_html --exclude=underlay -C ${moinRoot};
+    else
+        echo "... create $1 wiki";
+        DoOrDie sudo -u www-data mkdir -p ${moinRoot}/$1;
+        DoOrDie sudo -u www-data cp -pR /usr/share/moin/data ${moinRoot}/$1;
+        DoOrDie sudo -u www-data chmod -R ug+rwX ${moinRoot}/$1;
+        DoOrDie sudo -u www-data chmod -R o-rwx ${moinRoot}/$1;
+    fi
+
+    if [[ ! -e /etc/moin/$1.py ]]; then
+        echo "... configure standalone server to handle the $1 wiki";
+
+        cd keep/etc/moin > /dev/null;
+
+            DoOrDie cp -pf mywiki.py $1.py;
+            DoOrDie sed -e s/MyWiki/\""$2"\"/ -e s/mywiki/"$1"/ -i $1.py;
+            DoOrDie Deploy /etc/moin/$1.py;
+
+            # DoOrDie does not cope well with the ( and ) in the sed expression
+            # or perhaps it is just the spaces that screw it up
+
+            site=$(LanName);
+            site="${site%%-*}";
+
+            if [[ "$1" == "${site}" ]]; then
+                address="wiki.localhost";
+            else
+                address="$1.wiki.localhost";
+            fi
+
+            echo "   " \
+            sed \
+                -e '/"mywiki"/{s/ (/ #(/; p; s/ #(/ (/; s/ *#.*//}' \
+                -e '/"mywiki"/s~r".*"~r"^http://'"${address}"':8080/.*$"~' \
+                -e '/"mywiki"/s~mywiki~'"$1"'~' \
+                -i farmconfig.py;
+            sed \
+                -e '/"mywiki"/{s/ (/ #(/; p; s/ #(/ (/; s/ *#.*//}' \
+                -e '/"mywiki"/s~r".*"~r"^http://'"${address}"':8080/.*$"~' \
+                -e '/"mywiki"/s~mywiki~'"$1"'~' \
+                -i farmconfig.py || exit 1;
+
+            case "$site" in
+              (custards)
+                echo "   " \
+                sed -e '/"'$1'"/'"{p; s/.localhost/.$site.lan/}" \
+                    -i farmconfig.py;
+                sed -e '/"'$1'"/'"{p; s/.localhost/.$site.lan/}" \
+                    -i farmconfig.py || exit 1;
+                ;;
+              (vadatech)
+                echo "   " \
+                sed -e '/"'$1'"/'"{p; s/.localhost/.$site.uk.lan/p; s/.uk.lan/.uk.lab/}" \
+                    -i farmconfig.py;
+                sed -e '/"'$1'"/'"{p; s/.localhost/.$site.uk.lan/p; s/.uk.lan/.uk.lab/}" \
+                    -i farmconfig.py || exit 1;
+                ;;
+            esac
+
+            DoOrDie Deploy /etc/moin/farmconfig.py;
+
+        cd - > /dev/null;
+    fi
+
+    echo "... starting standalone server";
+    DoOrDie sudo service moin start;
+}
+
+function moinConf
+{
+    local wwwRoot="/media/work/www-data";
+    local moinRoot="${wwwRoot}/moin";
+
+    case "$1" in
+      (26 | trac)
+        listOptions 26 moin;
+        quit;
+        ;;
+
+      (26.1 | moinInstall)
+        step="26.1 moinInstall";
+        note "Install moin packages ...";
+
+        installPackage apache2 libjs-jquery;
+        installPackage python-pygments;
+        installPackage python-crypto python-openssl;
+        installPackage fckeditor;
+        installPackage python-moinmoin;
+        ;;
+
+      (26.2 | moinConfigure)
+        step="26.2 moinConfigure";
+        note "Configure the moin package ...";
+
+        if ! mountpoint "${wwwRoot}" > /dev/null; then
+            note ... oops ... "${wwwRoot}" is not a mountpoint
+            exit 1;
+        fi
+
+        DoOrDie sudo -u www-data mkdir -p ${moinRoot};
+
+        addToGroup "${USER}" www-data;
+        addToGroup www-data users;
+        DoOrDie SaveCurrent /etc/group;
+
+        DoOrDie InstallOurOwn /etc/init.d/moin;
+        DoOrDie sudo update-rc.d moin defaults;
+        ;;
+
+      (26.3.D | moinDisable)
+        step="26.3.D moinDisable";
+        note "Disable moin standalone server ...";
+
+        DoOrDie sudo invoke-rc.d moin stop;
+        DoOrDie sudo update-rc.d moin disable;
+        ;;
+
+      (26.3.E | moinEnable)
+        step="26.3.E moinEnable";
+        note "Enable moin standalone server ...";
+
+        DoOrDie sudo update-rc.d moin enable;
+        DoOrDie sudo invoke-rc.d moin start;
+        ;;
+
+      (26.4 | moinMyWiki)
+        step="26.4 moinMyWiki";
+        note "Create a simple wiki ...";
+
+        echo "... create home directory";
+        DoOrDie sudo mkdir -p ${moinRoot};
+        DoOrDie sudo chown www-data:www-data ${moinRoot};
+
+        echo "... create mywiki instance";
+        DoOrDie sudo -u www-data mkdir -p ${moinRoot}/mywiki;
+        DoOrDie sudo -u www-data cp -pR /usr/share/moin/data ${moinRoot}/mywiki;
+        DoOrDie sudo -u www-data cp -pR /usr/share/moin/underlay ${moinRoot}/mywiki;
+        DoOrDie sudo -u www-data chmod -R ug+rwX ${moinRoot}/mywiki;
+        DoOrDie sudo -u www-data chmod -R o-rwx ${moinRoot}/mywiki;
+
+        echo "... configure standalone server to use the mywiki instance";
+        DoOrDie sudo cp -pf /usr/share/moin/server/wikiserverconfig.py /etc/moin/;
+        DoOrDie CopyToKeep /etc/moin/{mywiki.py,farmconfig.py,wikiserverconfig.py};
+        DoOrDie ApplyPatch /etc/moin/{mywiki.py,farmconfig.py,wikiserverconfig.py};
+
+        cd keep/etc/moin > /dev/null;
+            DoOrDie sed -e "/hostname/s/'localhost'/'${HOSTNAME}'/" -i wikiserverconfig.py;
+            DoOrDie Deploy /etc/moin/wikiserverconfig.py;
+        cd - > /dev/null;
+        ;;
+
+      (26.5 | moinLanguage)
+        step="26.5 moinLanguage";
+        note "Install the English language help package ...";
+
+        echo "... starting standalone server";
+        DoOrDie sudo service moin start;
+
+        echo "... in a browser enter ...";
+        echo "... http://${HOSTNAME}:8080/LanguageSetup ...";
+        echo "... enable cookies and probably scripts ...";
+        echo "... select login and create an account for debian ...";
+        echo "... select login and login in as debian ...";
+        echo "... in the browser enter ...";
+        echo "... http://${HOSTNAME}:8080/LanguageSetup?action=language_setup ...";
+        echo "... choose English ...";
+        echo "... choose all_pages install...";
+        echo "... next try sysconf moinTestWiki...";
+        ;;
+
+      (26.6.T | moinTestWiki)
+        step="26.6.T moinTestWiki";
+        note "Create/Restore the Test Wiki ...";
+        restoreWiki "${moinRoot}" 'test' 'TestWiki';
+        ;;
+
+      (26.6.C | moinCustardsWiki)
+        step="26.6.C moinCustardsWiki";
+        note "Create/Restore the Custards Wiki ...";
+        restoreWiki "${moinRoot}" 'custards' 'Custards';
+        ;;
+
+      (26.6.I | moinItWiki)
+        step="26.6.I moinItWiki";
+        note "Create/Restore the Custards IT Wiki ...";
+        restoreWiki "${moinRoot}" 'it' 'Custards IT';
+        ;;
+
+      (26.6.P | moinPhilWiki)
+        step="26.6.P moinPhilWiki";
+        note "Create/Restore the Philately Wiki ...";
+        restoreWiki "${moinRoot}" 'phil' 'Philately';
+        ;;
+
+      (26.6.V | moinVadatechWiki)
+        step="26.6.V moinVadatechWiki";
+        note "Create/Restore the Vadatech Wiki ...";
+        restoreWiki "${moinRoot}" 'vadatech' 'Vadatech';
+        ;;
+
+      (26.99)
+        step="26.99 sanityCheck";
+        note "Checking moin ...";
+        ListLoggedSteps ${1%.*} | while read step name status; do
+            echo -e $step $name $status;
+            case "$step $name" in
+              ("26.2 moinConfigure")
+                CheckOurOwn /etc/init.d/moin;
+                CheckCurrent /etc/{group,passwd};
+                ;;
+              ("26.4 moinMyWiki")
+                CheckOriginal /etc/moin/{mywiki.py,farmconfig.py,wikiserverconfig.py};
+                CheckPatch /etc/moin/{mywiki.py,farmconfig.py,wikiserverconfig.py};
+                ;;
+              ("26.6.T moinTestWiki")
+                CheckDeployed /etc/moin/test.py;
+                ;;
+              ("26.6.C moinCustardsWiki")
+                CheckDeployed /etc/moin/custards.py;
+                ;;
+              ("26.6.I moinItWiki")
+                CheckDeployed /etc/moin/it.py;
+                ;;
+              ("26.6.P moinPhilWiki")
+                CheckDeployed /etc/moin/phil.py;
+                ;;
+              ("26.6.V moinVadatechWiki")
+                CheckDeployed /etc/moin/vadatech.py;
+                ;;
+            esac
+        done
+        quit;
+        ;;
+
+      (*)
+        badOption "$1";
+        listOptions 26 moin;
+        quit 1;
+        ;;
+    esac
+}
+
+### Local Variables: ***
+### mode:ksh ***
+### End: ***

@@ -1,0 +1,182 @@
+#!/bin/bash --posix
+
+##
+##  Goal:   semi-automate system configuration of applications
+##
+##  Use:    source sysconf-apps
+##
+##  NB:     The caller must source functions etc à la sysconf script.
+##
+
+function wgetAndCheck
+{
+    local url="$1";
+
+    DoOrDie wget -q "${url}";
+
+    if [[ $(file "${url##*/}") != "${url##*/}: $2" ]]; then
+        error "${url} is not: $2";
+        exit;
+    fi
+}
+
+# do it
+
+function appsConf
+{
+    case "$1" in
+      (20 | apps)
+        listOptions 20 apps;
+        quit;
+        ;;
+
+      (20.1 | appsDev)
+        step="20.1 appsDev";
+        note "Install C/C++ compiler and man pages 2 & 3";
+        installPackage manpages-dev build-essential ccache;
+        ;;
+
+      (20.2 | appsJava)
+        step="20.2 appsJava";
+        note "Install Java JRE";
+        installPackage default-jre icedtea-plugin;
+        ;;
+
+      (20.3 | appsOffice)
+        step="20.3 appsOffice";
+        note "Install LibreOffice";
+        installPackage libreoffice;
+        installPackage libreoffice-script-provider-python;
+        installPackage libreoffice-officebean;
+        if [[ -d "/etc/kde4" ]]; then
+          installPackage libreoffice-kde;
+          installPackage libreoffice-style-oxygen;
+        fi
+        ;;
+
+      (20.4 | appsSpellTools)
+        step="20.4 appsSpellTools";
+        note "Install spell, hyphenation and thesaurus";
+        installPackage myspell-en-gb hyphen-en-us mythes-en-us;
+        ;;
+
+      (20.5 | appsMozilla)
+        step="20.5 appsMozilla";
+        note "Install Mozilla applications";
+        case "${USER}" in
+          ("debian" | "pbr")
+            installPackage iceweasel iceweasel-l10n-en-gb;
+            installPackage xul-ext-adblock-plus xul-ext-flashblock xul-ext-noscript xul-ext-tabmixplus;
+            installPackage icedove icedove-l10n-en-gb;
+            ;;
+          ("ubuntu" | "mint" | "hybryde")
+            installPackage firefox firefox-locale-en;
+            installPackage thunderbird thunderbird-locale-en;
+            ;;
+          (*)
+            installPackage firefox firefox-l10n-en-gb;
+            installPackage thunderbird thunderbird-l10n-en-gb;
+        esac
+
+        # squeeze yes, wheezy no - DoOrDieLocal doapt-get install mozilla-libreoffice;
+        # squeeze yes, wheezy no - DoOrDieLocal doapt-get install mozplugger;
+        ;;
+
+      (20.6 | appsFlash)
+        step="20.6 appsFlash";
+        note "Install OpenSource flash";
+        installPackage gnash mozilla-plugin-gnash;
+        if [[ -d "/etc/kde4" ]]; then
+            installPackage klash konqueror-plugin-gnash;
+        fi
+        installPackage pulseaudio lightspark browser-plugin-lightspark;
+        ;;
+
+      (20.7 | appsVLC)
+        step="20.7 appsVLC";
+        note "Install VLC";
+        if [[ "${RELEASE}" == 13.10 || "${RELEASE}" == 16 ]]; then
+            installPackage vlc browser-plugin-vlc;
+        else
+            installPackage vlc mozilla-plugin-vlc;
+        fi
+        ;;
+
+      (20.8 | appsVNC)
+        step="20.8 appsVNC";
+        note "Install VNC servers";
+        installPackage tightvncserver xvfb x11vnc;
+        ;;
+
+      (20.9 | appsDavMail)
+        step="20.9 | appsDavMail";
+        note "Install DavMail and friends ...";
+
+        local tmpdir, root, version, deburl, deb, version, xpi;
+
+        tmpdir="/tmp/$USER.$$";
+        mkdir -p "${tmpdir}";
+
+        note  "... download DavMail ...";
+        root=http://sourceforge.net/projects/davmail/files/davmail;
+        wget -q "${root}" -O "${tmpdir}/davmail.html" /dev/null;
+
+        version=$(sed -e '/Click to enter/!d' "${tmpdir}/davmail.html" -e 's/"//g' -e 's/.*Click to enter //' | head -1);
+        wget -q "${root}/${version}" -O "${tmpdir}/davmail.html";
+
+        deburl=$(sed -e '/href.*http.*4.5.1.*deb/!d' -e 's/"//g' -e 's/.*href=//' "${tmpdir}/davmail.html");
+        deburl="${deburl/\/download/}";
+        wgetAndCheck "${deburl}" "Debian binary package (format 2.0)";
+
+        note  "... install DavMail ...";
+        deb="${deburl##*/}";
+        DoOrDie sudo dpkg --install "${deb}" '||' true;
+        DoOrDie sudo apt-get -f install -y;
+        DoOrDieLocal dpkglistsave davmail;
+        DoOrDie rm -f "${deb}";
+
+        note  "... install iceowl (calendar) extension ...";
+        installPackage iceowl-extension;
+
+        note  "... download and install the SOGo connector ...";
+        version=$(icedove --version);
+        version="${version##* }";
+        version="${version%%.*}";
+        wget -q http://www.sogo.nu/files/downloads/extensions -O "${tmpdir}/extensions";
+
+        xpi=$(fgrep "sogo-connector-$version" "${tmpdir}/extensions" | head -n 1 | sed  -e 's/"//g' -e 's/.*href=//' -e 's/>.*//');
+        wgetAndCheck "http://www.sogo.nu/files/downloads/extensions/${xpi}" "Zip archive data, at least v2.0 to extract";
+
+        DoOrDie cp -pf "${xpi}" "/home/mozilla/thunderbird/profile/extensions";
+        DoOrDie cp -pf "${xpi}" "/media/share/linux/usrconf/thunderbird/$HOSTNAME/extensions";
+
+        DoOrDie rm -f "${xpi}";
+        ;;
+
+      (20.10 | appsPidgin)
+        step="20.10 appsPidgin";
+        note "Install pidgin packages ...";
+
+        installPackage pidgin pidgin-sipe;
+        ;;
+
+      (20.99)
+        step="20.99 sanityCheck";
+        note "Checking apps ...";
+        ListLoggedSteps ${1%.*} | while read step name status; do
+            echo -e $step $name $status;
+        done
+        quit;
+        ;;
+
+      (*)
+        badOption "$1";
+        listOptions 20 apps;
+        quit 1;
+        ;;
+    esac
+}
+
+### Local Variables: ***
+### mode:ksh ***
+### End: ***

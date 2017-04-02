@@ -1,0 +1,138 @@
+#!/bin/bash --posix
+
+##
+##  Goal:   semi-automate system configuration of apt
+##
+##  Use:    source sysconf-apt
+##
+##  NB:     The caller must source functions etc à la sysconf script.
+##
+
+# do it
+
+function aptConf
+{
+    case "$1" in
+      (5 | apt)
+        listOptions 5 apt;
+        quit;
+        ;;
+
+      (5.1 | aptConfigure)
+        step="5.1 aptConfigure";
+        note "Configure apt ...";
+
+        echo "... no source packages please";
+        DoOrDie CopyToKeep /etc/apt/sources.list;
+        DoOrDie cp -pf "sources.list.${RELEASE}" keep/etc/apt/sources.list;
+        DoOrDie sed -i keep/etc/apt/sources.list -e "'/deb-src/s/^/# /'";
+        DoOrDie Deploy /etc/apt/sources.list;
+
+        echo "... backup original configuration files";
+        if [[ -e /etc/apt/apt.conf ]]; then
+            DoOrDie CopyToKeep /etc/apt/apt.conf;
+        fi
+
+        echo "... cache maintenance once a week";
+        DoOrDie InstallOurOwn /etc/apt/apt.conf.d/90periodic;
+        ;;
+
+      (5.2 | aptProxy)
+        if [[ "$HOSTNAME" == "ebony" ]]; then
+            if ! fgrep -q squid /etc/mtab; then
+                note "... set proxy later";
+                trap '-' EXIT;
+                exit;
+            fi
+        fi
+
+        step="5.2 aptProxy";
+        note "Configure apt to use proxy ...";
+
+        DoOrDie InstallOurOwn /etc/apt/apt.conf.d/80proxy;
+        DoOrDie sudo rm -f /etc/apt/apt.conf;
+        ;;
+
+      (5.3 | aptSquidInstall)
+        step="5.3 aptSquidInstall";
+        note "Install squid caching proxy ...";
+
+        installPackage squid;
+        ;;
+
+      (5.4 | aptSquidConfigure)
+        step="5.4 aptSquidConfigure";
+        note "Configure squid caching proxy ...";
+
+        DoOrDie CopyToKeep --sudo /etc/squid/squid.conf;
+        DoOrDie ApplyPatch --sudo /etc/squid/squid.conf squid.apt;
+
+        DoOrDie sudo service squid reload;
+        ;;
+
+      (5.5 | aptMultimedia)
+        step="5.5 aptMultimedia";
+        note "Configure multimedia repository ...";
+
+        DoOrDie InstallOurOwn /etc/apt/sources.list.d/wheezy-multimedia.list;
+
+        installKeyring deb-multimedia-keyring;
+        ;;
+
+      (5.6 | aptBackports)
+        step="5.6 aptBackports";
+        note "Configure backports repository ...";
+
+        DoOrDie InstallOurOwn /etc/apt/sources.list.d/wheezy-backports.list;
+
+        installKeyring pkg-mozilla-archive-keyring;
+        ;;
+
+      (5.7 | aptUpdate)
+        step="5.7 aptUpdate";
+        note "Make sure installation is up to date ...";
+
+        refreshPackages;
+        ;;
+
+      (5.99)
+        step="5.99 sanityCheck";
+        note "Checking apt ...";
+        ListLoggedSteps ${1%.*} | while read step name status; do
+            echo -e $step $name $status
+            case "$step $name" in
+              ("5.1 aptConfigure")
+                CheckOriginal /etc/apt/sources.list;
+                CheckDeployed /etc/apt/sources.list;
+                CheckOriginal --opt /etc/apt/apt.conf;
+                CheckOurOwn /etc/apt/apt.conf.d/90periodic;
+                ;;
+              ("5.2 aptProxy")
+                CheckOurOwn /etc/apt/apt.conf.d/80proxy;
+                ;;
+              ("5.4 aptSquidConfigure")
+                CheckOriginal --sudo /etc/squid/squid.conf;
+                CheckPatch --sudo /etc/squid/squid.conf squid.apt;
+                ;;
+              ("5.5 aptMultimedia")
+                CheckOurOwn /etc/apt/sources.list.d/wheezy-multimedia.list;
+                ;;
+              ("5.6 aptBackports")
+                CheckOurOwn /etc/apt/sources.list.d/wheezy-backports.list;
+                ;;
+            esac
+        done
+        quit;
+        ;;
+
+      (*)
+        badOption "$1";
+        listOptions 5 apt;
+        quit 1;
+        ;;
+    esac
+}
+
+### Local Variables: ***
+### mode:ksh ***
+### End: ***

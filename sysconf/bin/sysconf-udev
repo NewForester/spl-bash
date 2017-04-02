@@ -1,0 +1,85 @@
+#!/bin/bash --posix
+
+##
+##  Goal:   semi-automate system configuration of udev rules
+##
+##  Use:    source sysconf-udev
+##
+##  NB:     The caller must source functions etc à la sysconf script.
+##
+
+# do it
+
+function udevConf
+{
+    case "$1" in
+      (7 | udev)
+        listOptions 7 udev;
+        quit;
+        ;;
+
+      (7.1 | udevPersistent)
+        step="7.1 udevPersistent";
+        note "Backup udev persistence rules ...";
+
+        [[ -e /etc/udev/rules.d/70-persistent-cd.rules ]] && DoOrDie CopyToKeep /etc/udev/rules.d/70-persistent-cd.rules;
+        [[ -e /etc/udev/rules.d/70-persistent-net.rules ]] && DoOrDie CopyToKeep /etc/udev/rules.d/70-persistent-net.rules;
+
+        case "${HOSTNAME}" in
+          (alder) # swap DVD and CD-RW
+            note "may need to swap rules in 70-persistent-cd.rules";
+            ;;
+          (birch) # reorder eth0, eth1 and eth2
+            note "may need to reorder rules in 70-persistent-net.rules";
+            ;;
+          (aspen) # swap eth0 and eth1
+            note "may need to swap rules in 70-persistent-net.rules";
+        esac
+        ;;
+
+      (7.2 | udevTouchpad)
+        step="7.2 udevTouchpad";
+        note "Install udev rules for touchpad ...";
+
+        DoOrDie InstallOurOwn /etc/udev/rules.d/80-touchpad.rules;
+        ;;
+
+      (7.3 | udevPassthrough)
+        step="7.3 udevPassthrough";
+        note "Install udev rules for usb pass-through to kvm ...";
+
+        DoOrDie InstallOurOwn /etc/udev/rules.d/85-usbkvm.rules;
+        ;;
+
+      (7.99)
+        step="7.99 sanityCheck";
+        note "Checking udev ...";
+        ListLoggedSteps ${1%.*} | while read step name status; do
+            echo -e $step $name $status
+            case "$step $name" in
+              ("7.1 udevPersistent")
+                CheckOriginal /etc/udev/rules.d/70-persistent-net.rules;
+                CheckOriginal --opt /etc/udev/rules.d/70-persistent-cd.rules;
+                ;;
+              ("7.2 udevTouchpad")
+                CheckOurOwn /etc/udev/rules.d/80-touchpad.rules;
+                ;;
+              ("7.3 udevPassthrough")
+                CheckOurOwn /etc/udev/rules.d/85-usbkvm.rules;
+                ;;
+            esac
+        done
+        quit;
+        ;;
+
+      (*)
+        badOption "$1";
+        listOptions 7 udev;
+        quit 1;
+        ;;
+    esac
+}
+
+### Local Variables: ***
+### mode:ksh ***
+### End: ***

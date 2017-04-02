@@ -1,0 +1,351 @@
+#!/bin/bash --posix
+
+##
+##  Goal:   semi-automate system configuration of trac software
+##
+##  Use:    source sysconf-trac
+##
+##  NB:     The caller must source functions etc à la sysconf script.
+##
+
+# do it
+
+function echoInstructions
+{
+    echo "Start standalone server ...";
+    echo "... try http://localhost:8081 in your browser";
+    echo "... $1";
+    echo "... use ^C to kill and continue when ready";
+}
+
+function tracConf
+{
+    local wwwRoot=/media/work/www-data;
+    local tracRoot="${wwwRoot}/trac";
+
+    local db=$2;
+    local ref=$3;
+
+    case "$1" in
+      (27 | trac)
+        listOptions 27 trac;
+        quit;
+        ;;
+
+      (27.1 | tracInstall)
+        step="27.1 tracInstall";
+        note "Install trac packages ...";
+
+        installPackage apache2 libjs-jquery;
+        installPackage python-setuptools python-docutils;
+        installPackage python-subversion python-pysqlite2;
+        installPackage python-pygments python-genshi;
+        installPackage trac;
+        ;;
+
+      (27.2 | tracConfigure)
+        step="27.2 tracConfigure";
+        note "Configure the trac package ...";
+
+        if ! mountpoint "${wwwRoot}" > /dev/null; then
+            note ... oops ... "${wwwRoot}" is not a mountpoint;
+            exit 1;
+        fi
+
+        DoOrDie sudo -u www-data mkdir -p "${tracRoot}";
+
+        addToGroup "${USER}" www-data;
+        addToGroup www-data users;
+        DoOrDie SaveCurrent /etc/group;
+
+        DoOrDie InstallOurOwn /etc/init.d/trac;
+        DoOrDie sudo update-rc.d trac defaults;
+        ;;
+
+      (27.3 | tracUsers)
+        step="27.3 tracUsers";
+        note "Create/update trac users and their passwords ...";
+
+        if [[ -e "${tracRoot}/.htpasswd" ]]; then
+            echo "Update authentication file ...";
+            echo "";
+            cat "${tracRoot}/.htpasswd";
+            echo "";
+        else
+            echo "Create authentication file ...";
+        fi
+
+        echo "... paste password entries into this console and press ^D when done ...";
+        echo "... for new entries, use http://aspirine.org/htpasswd_en.html ...";
+        echo "    ... don't choose passwords containing : or ; or . or ,";
+
+        echo "------------------------------------------------";
+        cat > "${tracRoot}/.htpasswd";
+        echo "------------------------------------------------";
+        ;;
+
+      (27.4.D | tracDisable)
+        step="27.4.D tracDisable";
+        note "Disable trac standalone server ...";
+
+        DoOrDie sudo invoke-rc.d trac stop;
+        DoOrDie sudo update-rc.d trac disable;
+        ;;
+
+      (27.4.E | tracEnable)
+        step="27.4.E tracEnable";
+        note "Enable trac standalone server ...";
+
+        DoOrDie sudo update-rc.d trac enable;
+        DoOrDie sudo invoke-rc.d trac start;
+        ;;
+
+      (27.5 | tracCreate)
+        if [[ -z "${db}" ]]; then
+            note "Need a trac environment name";
+            quit;
+        fi
+
+        step="27.5 tracCreate:${db}";
+        note "Create new trac environment ${db} ...";
+
+        DoOrDie sudo -u www-data mkdir -p "${tracRoot}/${db}";
+        DoOrDie sudo -u www-data trac-admin "${tracRoot}/${db}" initenv "${db^}" "sqlite:db/trac.db" > /dev/null;
+        DoOrDie sudo chmod -R g+r "${tracRoot}/${db}";
+
+        DoOrDie inisort "${tracRoot}/${db}/conf/trac.ini" > "/tmp/trac.ini.$$";
+        DoOrDie sudo -u www-data cp -p "/tmp/trac.ini.$$" "${tracRoot}/${db}/conf/trac.ini.kkk";
+        ;;
+
+      (27.5.R | tracRestore)
+        if [[ -z "${db}" ]]; then
+            note "Need a trac environment name";
+            quit;
+        fi
+
+        step="27.5.R tracRestore:${db}";
+        note "Restore backup of trac environment ${db} ...";
+
+        DoOrDie sudo -u www-data mkdir -p "${tracRoot}";
+        local backup="/media/share/backup/current/wiki-trac-${db}.tgz";
+        DoOrDie sudo -u www-data tar -xzf "${backup}" -C "${tracRoot}";
+        ;;
+
+      (27.5.U | tracUpgrade)
+        if [[ -z "${db}" ]]; then
+            note "Need a trac environment name";
+            quit;
+        fi
+
+        step="27.5.U tracUpgrade:${db}";
+        note "Upgrade trac environment ${db} ...";
+
+        DoOrDie sudo -u www-data trac-admin "${tracRoot}/${db}" upgrade;
+        DoOrDie sudo -u www-data trac-admin "${tracRoot}/${db}" wiki upgrade;
+
+        DoOrDie sudo chmod -R g+r "${tracRoot}/${db}";
+
+        DoOrDie inisort "${tracRoot}/${db}/conf/trac.ini" > "/tmp/trac.ini.$$";
+        DoOrDie sudo -u www-data cp -p "/tmp/trac.ini.$$" "${tracRoot}/${db}/conf/trac.ini.kkk";
+        ;;
+
+      (27.5.T | tracCreateCheck)
+        if [[ -z "${db}" ]]; then
+            note "Need a trac environment name";
+            quit;
+        fi
+
+        step="27.5.T tracCreateCheck:${db}";
+        note "Check new trac environment ${db} ...";
+
+        echoInstructions "try the help pages - you can't login in or enter any data yet";
+        DoOrDie sudo -u www-data tracd --port 8081 -s "${tracRoot}/${db}";
+        ;;
+
+      (27.6 | tracPermissions)
+        if [[ -z "${db}" ]]; then
+            note "Need a trac environment name";
+            quit;
+        fi
+
+        step="27.6 tracPermissions:${db}";
+        note "Add permissions to new trac environment ${db} ...";
+
+        DoOrDie sudo -u www-data trac-admin "${tracRoot}/${db}" permission add debian TRAC_ADMIN WIKI_ADMIN;
+        DoOrDie sudo -u www-data trac-admin "${tracRoot}/${db}" permission add authenticated TICKET_EDIT_DESCRIPTION WIKI_RENAME;
+        ;;
+
+      (27.6.T | tracPermissionsCheck)
+        if [[ -z "${db}" ]]; then
+            note "Need a trac environment name";
+            quit;
+        fi
+
+        step="27.6.T tracPermissionsCheck:${db}";
+        note "Check permissions of new trac environment ${db} ...";
+
+        echoInstructions "try to login as debian and check users and permissions";
+        DoOrDie sudo -u www-data tracd --port=8081 -s --basic-auth="*,${tracRoot}/.htpasswd,trac" "${tracRoot}/${db}";
+        ;;
+
+      (27.7 | tracIniFile)
+        if [[ -z "${db}" ]]; then
+            note "Need a trac environment name";
+            quit;
+        fi
+
+        if [[ -z "${ref}" ]]; then
+            note "Need a trac environment reference";
+            quit;
+        fi
+
+        step="27.7 tracIniFile:${db}";
+        note "Hack trac.ini of new trac environment ${db} ...";
+
+# trac-admin config get <section> <option>
+# trac-admin config set <section> <option> <value>
+
+        DoOrDie cp -p "${tracRoot}/${db}/conf/trac.ini" "/tmp/trac.ini.$$";
+
+        sed -e '/^\[components]/,/^$/d' -e '/^\[components]/,$d' -i "/tmp/trac.ini.$$";
+        cat >> "/tmp/trac.ini.$$" << EOF
+[components]
+trac.ticket.report.* = disabled
+EOF
+        sed -e "/alt =/s/=.*/= ${db^}/" -e "/src =/s/=.*/= site\/${db^}.png/" -i "/tmp/trac.ini.$$";
+        sed -e '/default.*query/s/$/\&order=milestone\&group=component/' -i "/tmp/trac.ini.$$";
+        sed -e '/^\[intertrac]/,/^$/d' -e '/^\[intertrac]/,$d' -i "/tmp/trac.ini.$$";
+        sed -e '/^\[intertrac]/,/^$/p;d' -e '/^\[intertrac]/,$p;d' -e d \
+            "${tracRoot}/${ref}/conf/trac.ini" >> "/tmp/trac.ini.$$";
+        sed -e '/^\[logging]/,/^$/d' -e '/^\[logging]/,$d' -i "/tmp/trac.ini.$$";
+        sed -e '/^\[logging]/,/^$/p;d' -e '/^\[logging]/,$p;d' -e d \
+            "${tracRoot}/${ref}/conf/trac.ini" >> "/tmp/trac.ini.$$";
+
+        DoOrDie inisort "/tmp/trac.ini.$$" > "/tmp/${db}.ini.$$";
+        nano "/tmp/${db}.ini.$$";
+        DoOrDie sudo -u www-data cp -p "/tmp/${db}.ini.$$" "${tracRoot}/${db}/conf/trac.ini";
+
+        # DoOrDie sudo -u www-data diff -Naur "${tracRoot}/${db}/conf/trac.ini{.kkk,}";
+        ;;
+
+      (27.7.B | tracPluginBlog)
+        if [[ -z "${db}" ]]; then
+            note "Need a trac environment name";
+            quit;
+        fi
+
+        if [[ -z "${ref}" ]]; then
+            note "Need a trac environment reference";
+            quit;
+        fi
+
+        step="27.7.B tracPluginBlog:${db}";
+        note "Add blog plugin to new trac environment ${db} ...";
+
+        DoOrDie cp -p "${tracRoot}/${db}/conf/trac.ini" "/tmp/trac.ini.$$";
+        sed -e '/^\[components]/a\
+tracfullblog.* = enabled' -i "/tmp/trac.ini.$$";
+        sed -e "/mainnav =/s/= \(.*\)/= blog,\1/" -i "/tmp/trac.ini.$$";
+        sed -e '/^\[fullblog]/,/^$/d' -e '/^\[fullblog]/,$d' -i "/tmp/trac.ini.$$";
+        sed -e '/^\[fullblog]/,/^$/p;d' -e '/^\[fullblog]/,$p;d' -e d \
+            "${tracRoot}/${ref}/conf/trac.ini" >> "/tmp/trac.ini.$$";
+
+        DoOrDie inisort "/tmp/trac.ini.$$" > "/tmp/${db}.ini.$$";
+        DoOrDie sudo -u www-data cp -p "/tmp/${db}.ini.$$" "${tracRoot}/${db}/conf/trac.ini";
+
+        DoOrDie sudo -u www-data trac-admin "${tracRoot}/${db}" upgrade;
+
+        DoOrDie sudo -u www-data trac-admin "${tracRoot}/${db}" permission add debian BLOG_ADMIN;
+        DoOrDie sudo -u www-data trac-admin "${tracRoot}/${db}" permission add anonymous BLOG_VIEW;
+        DoOrDie sudo -u www-data trac-admin "${tracRoot}/${db}" permission add authenticated BLOG_COMMENT BLOG_CREATE BLOG_MODIFY_OWN;
+
+        # DoOrDie sudo -u www-data diff -Naur "${tracRoot}/${db}/conf/trac.ini{.kkk,}";
+        ;;
+
+      (27.7.C | tracPluginChild)
+        if [[ -z "${db}" ]]; then
+            note "Need a trac environment name";
+            quit;
+        fi
+
+        if [[ -z "${ref}" ]]; then
+            note "Need a trac environment reference";
+            quit;
+        fi
+
+        step="27.7.C tracPluginChild:${db}";
+        note "Add child tickets to new trac environment ${db} ...";
+
+        DoOrDie cp -p "${tracRoot}/${db}/conf/trac.ini" "/tmp/trac.ini.$$";
+        sed -e '/^\[components]/a\
+childtickets.* = enabled' -i "/tmp/trac.ini.$$";
+        sed -e '/^\[childtickets]/,/^$/d' -e '/^\[childtickets]/,$d' -i "/tmp/trac.ini.$$";
+        sed -e '/^\[childtickets]/,/^$/p;d' -e '/^\[childtickets]/,$p;d' -e d \
+            "${tracRoot}/${ref}/conf/trac.ini" >> "/tmp/trac.ini.$$";
+        sed -e '/^\[ticket-custom]/,/^$/d' -e '/^\[ticket-custom]/,$d' -i "/tmp/trac.ini.$$";
+        sed -e '/^\[ticket-custom]/,/^$/p;d' -e '/^\[ticket-custom]/,$p;d' -e d \
+            "${tracRoot}/${ref}/conf/trac.ini" >> "/tmp/trac.ini.$$";
+
+        DoOrDie inisort "/tmp/trac.ini.$$" > "/tmp/${db}.ini.$$";
+        DoOrDie sudo -u www-data cp -p "/tmp/${db}.ini.$$" "${tracRoot}/${db}/conf/trac.ini";
+
+        # DoOrDie sudo -u www-data diff -Naur "${tracRoot}/${db}/conf/trac.ini{.kkk,}";
+        ;;
+
+      (27.8 | tracComponentEnums)
+        if [[ -z "${db}" ]]; then
+            note "Need a trac environment name";
+            quit;
+        fi
+
+        if [[ -z "${ref}" ]]; then
+            note "Need a trac environment reference";
+            quit;
+        fi
+
+        step="27.8 tracComponentEnums:${db}";
+        note "Revise component and other enumerations for new trac environment ${db} ...";
+
+        DoOrDie rm -f "/tmp/${db}.db.$$";
+        DoOrDie cp -p "${tracRoot}/${ref}/db/trac.db" "/tmp/${db}.db.$$";
+
+        sqlite3 "/tmp/${db}.db.$$" << EOF
+.output /tmp/${db}.sql.$$
+.dump enum
+.dump component
+.exit
+EOF
+        sed -e '/CREATE/h;s/CREATE \(.*\) (/DROP \1;/p' -e '/DROP/g' -i "/tmp/${db}.sql.$$";
+        nano "/tmp/${db}.sql.$$";
+        DoOrDie cp -p "${tracRoot}/${db}/db/trac.db" "/tmp/${db}.db.$$";
+        sqlite3 "/tmp/${db}.db.$$" < "/tmp/${db}.sql.$$";
+
+        DoOrDie sudo -u www-data cp -p "/tmp/${db}.db.$$" "${tracRoot}/${db}/db/trac.db";
+        ;;
+
+      (27.99)
+        step="27.99 sanityCheck";
+        note "Checking trac ...";
+        ListLoggedSteps ${1%.*} | while read step name status; do
+            echo -e $step $name $status;
+            case "$step $name" in
+              ("27.2 tracConfigure")
+                CheckOurOwn /etc/init.d/trac;
+                CheckCurrent /etc/{group,passwd};
+                ;;
+            esac
+        done
+        quit;
+        ;;
+
+      (*)
+        badOption "$1";
+        listOptions 27 trac;
+        quit 1;
+        ;;
+    esac
+}
+
+### Local Variables: ***
+### mode:ksh ***
+### End: ***

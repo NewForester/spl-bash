@@ -1,0 +1,105 @@
+#!/bin/bash --posix
+
+##
+##  Goal:   semi-automate system configuration
+##
+##  Use:    source sysconf-flags
+##
+##  Flags:  steps           list steps and mnemonics in numeric order
+##          log             list all the steps attempted so far
+##          check stage     check configuration is good
+##          current         list the current step (last attempted)
+##          erase           erase the last (attempted) step from the log
+##          next            list the next steps to be done
+##          refresh         reload the script from its reference
+##          help            list instruction for use
+##
+##  Note:   For each --flag, the abbreviated form -f is accepted.
+##
+##  Files:  ~/keep/sysconf - the log sysconf steps attempted
+##          ~/keep/usrconf - the log usrconf steps attempted
+##
+
+# process flag
+
+case "$1" in
+  (-s | --steps)
+    sed -e '/^        /d' -e '/^ *(.*)$/!d' -e '/(\*)/d' -e 's/[(|)]//g' -e 's/\*//g' $0 | sort -n | while read step mnemonic; do
+        if [[ -n "${mnemonic}" ]]; then
+            printf "%-7s %s\n" "${step}" "${mnemonic}";
+        fi
+    done | sed -e 1d;
+    exit;
+    ;;
+
+  (-l | --log)
+    cat "${logFile}";
+    exit;
+    ;;
+
+  (-c | --check)
+    if [[ $# -eq 1 ]]; then
+        tail -n 1 "${logFile}";
+        exit;
+    fi
+    $0 $($0 -s | awk "/^$2 /{ print \$1 } / $2/{ print \$1 }").99;
+    exit;
+    ;;
+
+  (-c | --current)
+    tail -n 1 "${logFile}";
+    exit;
+    ;;
+
+  (-e | --erase)
+    sed -i "${logFile}" -e '$d';
+    exit;
+    ;;
+
+  (-n | --next)
+    local date time step mnemonic state major;
+
+    if [[ -e "${logFile}" ]]; then
+        tail -n 1 "${logFile}" | tee /tmp/${0##*/}.$$;
+
+        read date time step mnemonic state < /tmp/${0##*/}.$$;
+        if [[ -n "${state}" ]]; then
+            major=${step%%.*};
+
+            $0 "${major}" | sed -e "1,/${mnemonic%:*}/d" | tee /tmp/${0##*/}.$$;
+        else
+            rm -f /tmp/${0##*/}.$$;
+        fi
+    fi
+
+    if [[ ! -s /tmp/${0##*/}.$$ ]]; then
+        if [[ -n "${major}" ]]; then
+            $0 -s  | sed -e "0,/^${major} /d";
+        else
+            $0 -s;
+        fi | head -n 5;
+    fi
+    rm -f /tmp/${0##*/}.$$;
+
+    exit;
+    ;;
+
+  (-r | --refresh)
+    cp -pf "${installBin}/${0##*/}" "${HOME}/bin";
+    exit;
+    ;;
+
+  (-h | --help)
+    usage "I hope that was helpful";
+    exit 1;
+    ;;
+
+  (*)
+    usage "bad flag \"$1\"";
+    exit 1;
+    ;;
+esac
+
+### Local Variables: ***
+### mode:ksh ***
+### End: ***

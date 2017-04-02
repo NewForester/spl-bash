@@ -1,0 +1,61 @@
+#!/bin/bash --posix
+
+##
+##  Goal:   semi-automate system configuration of printers
+##
+##  Use:    source sysconf-printer
+##
+##  NB:     The caller must source functions etc à la sysconf script.
+##
+
+# do it
+
+function printerConf
+{
+    case "$1" in
+      (18 | printer)
+        listOptions 18 printer;
+        quit;
+        ;;
+
+      (18.1 | printerInstall)
+        step="18.1 printerInstall";
+        note "Install printer and scanner software ...";
+
+        installPackage cups xsane hplip hplip-gui;
+        ;;
+
+      (18.2 | printerSetup)
+        step="18.2 printerSetup";
+        note "Install configuration files for the study printer";
+
+        DoOrDie sudo service cups stop;
+        DoOrDie sudo cp -pR "${installShare}/sysconf/etc/cups"/* /etc/cups;
+        DoOrDie sudo service cups start;
+        ;;
+
+      (18.99)
+        step="18.99 sanityCheck";
+        note "Checking printer ...";
+        ListLoggedSteps ${1%.*} | while read step name status; do
+            echo -e $step $name $status;
+            case "$step $name" in
+              ("18.2 printerSetup")
+                CheckMaster --sudo --nokeep /etc/cups/printers.conf;
+                ;;
+            esac
+        done
+        quit;
+        ;;
+
+      (*)
+        badOption "$1";
+        listOptions 18 printer;
+        quit 1;
+        ;;
+    esac
+}
+
+### Local Variables: ***
+### mode:ksh ***
+### End: ***

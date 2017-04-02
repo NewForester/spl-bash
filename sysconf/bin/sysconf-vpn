@@ -1,0 +1,165 @@
+#!/bin/bash --posix
+
+##
+##  Goal:   semi-automate system configuration of openvpn
+##
+##  Use:    source sysconf-vpn
+##
+##  NB:     The caller must source functions etc à la sysconf script.
+##
+
+# do it
+
+function vpnConf
+{
+    case "$1" in
+      (29 | vpn)
+        listOptions 29 vpn;
+        quit;
+        ;;
+
+      (29.1 | vpnInstall)
+        step="29.1 vpnInstall";
+        note "Install openvpn ...";
+
+        installPackage openvpn;
+        ;;
+
+      (29.2 | vpnConfigure)
+        step="29.2 vpnConfigure";
+        note "Install host specific keys, certificates and configuration ...";
+
+        DoOrDie InstallOurOwn /etc/openvpn/ca.crt;
+
+        local vpnhost;
+        case "${HOSTNAME}" in
+          (ebony)
+            host=custards;
+            DoOrDie InstallOurOwn /etc/openvpn/dh1024.pem;
+            DoOrDie InstallOurOwn --sudo /etc/openvpn/ca.key;
+            ;;
+          (maple)
+            host=maple;
+            ;;
+          (uk694715dl)
+            host=work;
+            ;;
+          (*)
+            host=clifford;
+            ;;
+        esac
+
+        DoOrDie InstallOurOwn /etc/openvpn/${host}.{conf,crt};
+        DoOrDie InstallOurOwn --sudo /etc/openvpn/${host}.key;
+        ;;
+
+      (29.3 | vpnNoAutostart)
+        step="29.3 vpnNoAutostart";
+        note "Do not start the VPN client automatically ...";
+
+        DoOrDie CopyToKeep /etc/default/openvpn;
+        DoOrDie ApplyPatch /etc/default/openvpn;
+        ;;
+
+      (29.4 | vpnHosts)
+        step="29.4 vpnHosts";
+        note "Patch /etc/hosts with VPN host names ...";
+
+        echo "... update /etc/hosts";
+        DoOrDie CopyToKeep /etc/hosts;
+        DoOrDie InsertIntoFile '2' /etc/hosts hosts-vpn;
+
+        if [[ $(fgrep -c ${HOSTNAME} keep/etc/hosts) -gt 1 ]]; then
+            DoOrDie -i keep/etc/hosts sed -e "'2d'";
+        fi
+
+        DoOrDie Deploy /etc/hosts;
+        ;;
+
+      (29.5 | vpnHostsAllow)
+        step="29.5 vpnHostsAllow";
+        note "Update /etc/hosts.allow to allow services over the VPN ...";
+
+        echo "... update /etc/hosts.allow";
+        DoOrDie CopyToKeep /etc/hosts.allow;
+        DoOrDie InsertIntoFile '/localhost/' /etc/hosts.allow hosts.allow-{ssh,nfs}-vpn;
+        DoOrDie Deploy /etc/hosts.allow;
+        ;;
+
+      (29.10 | vpnNexsan)
+        step="29.10 vpnNexsan";
+        note "Install ppp files needed for Nexsan VPNs ...";
+
+        DoOrDie InstallOurOwn /etc/ppp/peers/{nexsan-pptp,nexsan-sstp};
+        DoOrDie InstallOurOwn /etc/ppp/ip-up.d/nexsan-vpn;
+
+        DoOrDie CopyToKeep --sudo /etc/ppp/chap-secrets;
+        DoOrDie ApplyPatch --sudo /etc/ppp/chap-secrets chap-secrets-nexsan;
+        ;;
+
+      (29.99)
+        step="29.99 sanityCheck";
+        note "Checking vpn ...";
+        ListLoggedSteps ${1%.*} | while read step name status; do
+            echo -e $step $name $status;
+            case "$step $name" in
+              ("29.2 vpnConfigure")
+                CheckOurOwn /etc/openvpn/ca.crt;
+
+                local vpnhost;
+                case "${HOSTNAME}" in
+                  (ebony)
+                    host=custards;
+                    CheckOurOwn /etc/openvpn/dh1024.pem;
+                    CheckOurOwn --sudo /etc/openvpn/ca.key;
+                    ;;
+                  (maple)
+                    host=maple;
+                    ;;
+                  (uk694715dl)
+                    host=work;
+                    ;;
+                  (*)
+                    host=clifford;
+                    ;;
+                esac
+
+                CheckOurOwn /etc/openvpn/${host}.{conf,crt};
+                CheckOurOwn --sudo /etc/openvpn/${host}.key;
+                ;;
+              ("29.3 vpnNoAutostart")
+                CheckOriginal /etc/default/openvpn;
+                CheckPatch /etc/default/openvpn;
+                ;;
+              ("29.4 vpnHosts")
+                CheckOriginal /etc/hosts;
+                CheckDotDir /etc/hosts hosts-vpn;
+                ;;
+              ("29.5 vpnHostsAllow")
+                CheckOriginal /etc/hosts.allow;
+                CheckDotDir /etc/hosts.allow hosts.allow-{ssh,nfs}-vpn;
+                ;;
+              ("29.10 vpnNexsan")
+                CheckOurOwn /etc/ppp/peers/{nexsan-pptp,nexsan-sstp};
+                CheckOurOwn /etc/ppp/ip-up.d/nexsan-vpn;
+
+                CheckOriginal --sudo /etc/ppp/chap-secrets;
+                CheckPatch --sudo /etc/ppp/chap-secrets chap-secrets-nexsan;
+                ;;
+
+            esac
+        done
+        quit;
+        ;;
+
+      (*)
+        badOption "$1";
+        listOptions 29 vpn;
+        quit 1;
+        ;;
+    esac
+}
+
+### Local Variables: ***
+### mode:ksh ***
+### End: ***

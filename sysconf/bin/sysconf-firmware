@@ -1,0 +1,106 @@
+#!/bin/bash --posix
+
+##
+##  Goal:   semi-automate system configuration of firmware modules
+##
+##  Use:    source sysconf-firmware
+##
+##  NB:     The caller must source functions etc à la sysconf script.
+##
+
+# do it
+
+function firmwareConf
+{
+    local fwbase=/media/share/linux/firmware;
+
+    case "$1" in
+      (3 | firmware)
+        listOptions 3 firmware;
+        quit;
+        ;;
+
+      (3.1 | firmwareNetgear)
+        step="3.1 firmwareNetgear";
+        note "Install firmware for the Netgear PCMCIA wifi card ...";
+
+        DoOrDie sudo cp -pR "${fwbase}/isl3886pci" "/lib/firmware/";
+
+        echo "... add script to unload/reload the driver module when entering/leaving a suspend mode";
+        DoOrDie InstallOurOwn /etc/pm/sleep.d/75-prism;
+        ;;
+
+      (3.2 | firmwareBelkin)
+        step="3.2 firmwareBelkin";
+        note "Install firmware for the Belkin USB wifi stick ...";
+
+        DoOrDie sudo cp -pR "${fwbase}/zd1211" "/lib/firmware/";
+        ;;
+
+      (3.3 | firmwareRtl)
+        step="3.3 firmwareRtl";
+        note "Install firmware for the RTL network interface chips ...";
+
+        DoOrDie sudo cp -pR "${fwbase}/rtl_nic" "/lib/firmware/";
+        ;;
+
+      (3.4 | firmwareRadeon)
+        step="3.4 firmwareRadeon";
+        note "Install firmware for the Radeon graphic chips ...";
+
+        DoOrDie sudo cp -pR "${fwbase}/radeon" "/lib/firmware/";
+        ;;
+
+      (3.5 | firmwareDvb)
+        step="3.5 firmwareDvb";
+        note "Install firmware for the USB DVB sticks ...";
+
+        fwbase="/media/work/projects/mythtv/firmware"
+        DoOrDie sudo cp -p "${fwbase}/"{dvb-usb-dib0700-1.20.fw,dvb-usb-ec168.fw} "/lib/firmware";
+        ;;
+
+      (3.6 | firmwareSdhc)
+        step="3.6 firmwareSdhc";
+        note "Install firmware for SDHC flash card reader ...";
+
+        DoOrDie sudo cp -pR "${fwbase}/ene-ub6250" "/lib/firmware/";
+        ;;
+
+      (3.7 | firmwareLblink)
+        step="3.7 firmwareLblink";
+        note "Install firmware for the LB Link USB wifi stick ...";
+
+        DoOrDie sudo cp -pR "${fwbase}/rtlwifi" "/lib/firmware/";
+
+        echo "... add script to unload/reload the driver module when entering/leaving a suspend mode";
+        DoOrDie InstallOurOwn /etc/pm/sleep.d/75-rtlwifi;
+        ;;
+
+      (3.99)
+        step="3.99 sanityCheck";
+        note "Checking firmware ...";
+        ListLoggedSteps ${1%.*} | while read step name status; do
+            echo -e $step $name $status
+            case "$step $name" in
+              ("3.1 firmwareNetgear")
+                CheckOurOwn /etc/pm/sleep.d/75-prism;
+                ;;
+              ("3.7 firmwareLblink")
+                CheckOurOwn /etc/pm/sleep.d/75-rtlwifi;
+                ;;
+            esac
+        done
+        quit;
+        ;;
+
+      (*)
+        badOption "$1";
+        listOptions 3 firmware;
+        quit 1;
+        ;;
+    esac
+}
+
+### Local Variables: ***
+### mode:ksh ***
+### End: ***

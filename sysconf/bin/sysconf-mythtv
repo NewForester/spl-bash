@@ -1,0 +1,167 @@
+#!/bin/bash --posix
+
+##
+##  Goal:   semi-automate system configuration of mythtv
+##
+##  Use:    source sysconf-mythtv
+##
+##  NB:     The caller must source functions etc à la sysconf script.
+##
+
+# do it
+
+function mythtvConf
+{
+    case "$1" in
+      (22 | mythtv)
+        listOptions 22 mythtv;
+        quit;
+        ;;
+
+      (22.1 | mythtvInstallDvb)
+        step="22.1 mythtvInstallDvb";
+        note "Install dvb test software ...";
+        installPackage dvbstream dvb-apps xine-ui;
+        ;;
+
+      (22.1.D | mythtvDvbDrivers)
+        step="22.1.D mythtvDvbDrivers";
+        if [[ "${HOSTNAME}" == "ebony" ]]; then
+            note "Ensure drivers for the VideoMate card will load ...";
+            DoOrDie InstallOurOwn /etc/modprobe.d/videomate.conf;
+        fi
+        ;;
+
+      (22.2.C | mythtvMySqlClient)
+        step="22.2.C mythtvMySqlClient";
+        note "Install mysql database client ...";
+        installPackage mysql-common mysql-client;
+        ;;
+
+      (22.2.S | mythtvMySqlServer)
+        step="22.2.S mythtvMySqlServer";
+        note "Install mysql database client and server ...";
+        installPackage mysql-common mysql-client mysql-server;
+        ;;
+
+      (22.3.C | mythtvInstallClient)
+        step="22.3.C mythtvInstallClient";
+        note "Install mythtv client ...";
+        installPackage mythtv-common mythtv-frontend;
+        ;;
+
+      (22.3.S | mythtvInstallServer)
+        step="22.3.S mythtvInstallServer";
+        note "Install mythtv client and server ...";
+        installPackage gawk mjpegtools libjs-jquery;
+        installPackage transcode xmltv-util;
+        installPackage mythtv-common mythtv-frontend mythtv-database mythtv-backend mythtv;
+        ;;
+
+      (22.4.C | mythtvSetupClient)
+        step="22.4.C mythtvSetupClient";
+        note "Configure desktop and user ids to use the mythtv client ...";
+
+        echo "... install our own desktop files";
+        DoOrDie InstallOurOwn /usr/share/applications/mythtv.desktop;
+        ;;
+
+      (22.4.S | mythtvSetupServer)
+        step="22.4.S mythtvSetupServer";
+        note "Configure desktop and user ids to use the mythtv server ...";
+
+        echo "... install our own desktop files";
+        DoOrDie InstallOurOwn /usr/share/applications/{mythtv,mythtv-setup}.desktop;
+
+        echo "... allow group mythtv to start/stop the back-end without sudo password";
+        DoOrDie InstallOurOwn /etc/sudoers.d/service;
+
+        echo "... add users to groups for convenience";
+        addUserToGroups "${USER}" mythtv;
+        addUserToGroups mythtv users;
+        DoOrDie SaveCurrent /etc/group;
+        ;;
+
+      (22.5 | mythtvDatabaseLan)
+        step="22.5 mythtvDatabaseLan";
+        note "Configure the mythtv database for LAN access ...";
+
+        echo "... patch config.xml and my.cnf";
+        DoOrDie CopyToKeep --sudo /etc/mythtv/config.xml;
+        DoOrDie ApplyPatch --sudo /etc/mythtv/config.xml;
+        DoOrDie CopyToKeep /etc/mysql/my.cnf;
+        DoOrDie ApplyPatch /etc/mysql/my.cnf;
+
+        echo "... update /etc/hosts.allow";
+        DoOrDie CopyToKeep /etc/hosts.allow;
+        DoOrDie InsertIntoFile '/localhost/' /etc/hosts.allow hosts.allow-mysql;
+        DoOrDie Deploy /etc/hosts.allow;
+
+        echo "... refresh mysql";
+        DoOrDie sudo service mysql reload;
+        ;;
+
+      (22.6 | mythtvDatabaseAccess)
+        step="22.6 mythtvDatabaseAccess";
+        note "Grant LAN access to the mythtv database ...";
+
+        read -sp "SQL root password: " sqlpw;
+        echo "";
+
+        echo "... grant SQL root access to ${HOSTNAME}";
+        DoOrDieHere mysql -u root -p${sqlpw} -h localhost << EOF
+grant all privileges on *.* to root@${HOSTNAME}.custards.lan identified by '${sqlpw}' with grant option;
+flush privileges;
+EOF
+
+        local pw=$(sed -e "/Password/!d" -e "s/.*>\(.*\)<.*/\1/" keep/etc/mythtv/config.xml);
+        echo "... grant mythtv database access to LAN users";
+        DoOrDieHere mysql -u root -p${sqlpw} -h localhost << EOF
+grant all privileges on mythconverg.* to mythtv@'192.168.19.%' identified by '${pw}';
+flush privileges;
+EOF
+
+        fini="next login as telly and use usrconf to test the dvb setup";
+        ;;
+
+      (22.99)
+        step="22.99 sanityCheck";
+        note "Checking mythtv ...";
+        ListLoggedSteps ${1%.*} | while read step name status; do
+            echo -e $step $name $status;
+            case "$step $name" in
+              ("22.1.D mythtvDvbDrivers")
+                CheckOurOwn /etc/modprobe.d/videomate.conf;
+                ;;
+              ("22.4.C mythtvSetupClient")
+                CheckOurOwn /usr/share/applications/mythtv.desktop;
+                ;;
+              ("22.4.S mythtvSetupServer")
+                CheckOurOwn /usr/share/applications/{mythtv,mythtv-setup}.desktop;
+                CheckOurOwn --sudo /etc/sudoers.d/service;
+                CheckCurrent /etc/{group,passwd};
+                ;;
+              ("22.5 mythtvDatabaseLan")
+                CheckOriginal --sudo /etc/mythtv/config.xml;
+                CheckPatch --sudo /etc/mythtv/config.xml;
+                CheckOriginal /etc/mysql/my.cnf;
+                CheckPatch /etc/mysql/my.cnf;
+                CheckOriginal /etc/hosts.allow;
+                CheckDotDir /etc/hosts.allow hosts.allow-mysql;
+                ;;
+            esac
+        done
+        quit;
+        ;;
+
+      (*)
+        badOption "$1";
+        listOptions 22 mythtv;
+        quit 1;
+        ;;
+    esac
+}
+
+### Local Variables: ***
+### mode:ksh ***
+### End: ***

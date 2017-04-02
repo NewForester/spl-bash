@@ -1,0 +1,80 @@
+#!/bin/bash --posix
+
+##
+##  Goal:   semi-automate system configuration of the sound system
+##
+##  Use:    source sysconf-sound
+##
+##  NB:     The caller must source functions etc à la sysconf script.
+##
+
+# do it
+
+function soundConf
+{
+    case "$1" in
+      (17 | sound)
+        listOptions 17 sound;
+        quit;
+        ;;
+
+      (17.1.S | soundAlsaSave)
+        step="17.1.S soundAlsaSave";
+        note "Save ALSA configuration ...";
+
+        DoOrDie sudo alsactl store;
+        DoOrDie CopyToKeep /var/lib/alsa/asound.state;
+        ;;
+
+      (17.1.R | soundAlsaRestore)
+        step="17.1.R soundAlsaRestore";
+        note "Restore ALSA configuration ...";
+
+        DoOrDie InstallOurOwn /var/lib/alsa/asound.state;
+        DoOrDie sudo alsactl restore;
+        ;;
+
+      (17.2 | soundModules)
+        if [[ "${HOSTNAME}" != "birch" ]]; then
+            error "Impertinent choice on ${HOSTNAME}";
+            quit;
+        fi
+
+        step="17.2 soundModules";
+        note "Ensure ISA sound modules are loaded during boot ...";
+        DoOrDie CopyToKeep /etc/modules;
+        DoOrDie ApplyPatch /etc/modules;
+        ;;
+
+      (17.99)
+        step="17.99 sanityCheck";
+        note "Checking sound ...";
+        ListLoggedSteps ${1%.*} | while read step name status; do
+            echo -e $step $name $status
+            case "$step $name" in
+              ("17.1.S soundAlsaSave")
+                CheckOriginal /var/lib/alsa/asound.state;
+                ;;
+              ("17.1.R soundAlsaRestore")
+                CheckOurOwn /var/lib/alsa/asound.state;
+                ;;
+              ("17.2 soundModules")
+                CheckOriginal /etc/modules;
+                CheckPatch /etc/modules;
+                ;;
+            esac
+        done
+        quit;
+        ;;
+
+      (*)
+        badOption "$1";
+        listOptions 17 sound;
+        quit 1;
+        ;;
+    esac
+}
+
+### Local Variables: ***
+### mode:ksh ***
+### End: ***

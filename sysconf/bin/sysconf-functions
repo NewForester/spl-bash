@@ -1,0 +1,598 @@
+#!/bin/bash --posix
+
+##
+##  Goal:   semi-automate system configuration
+##
+##  Use:    source sysconf-functions
+##
+##  Trivial Functions:
+##
+##      error       - print diagnostic message
+##      note        - print diagnostic message
+##      badOption   - print diagnostic message
+##      listOptions - list the steps in the current section
+##
+##  Recursive function (no longer used recursively):
+##
+##      listSteps   - by introspection of the script source file
+##
+##  Helper functions:
+##
+##      DoOrDie         - echo command, execute command and exit if there is an error
+##      DoOrDieHere     - for commands whose stdin has been redirected
+##      DoOrDieLocal    - for invoking scripts in $HOME/bin only
+##
+##  Wrapper functions for the package manager:
+##
+##      installPackage  - install (one or more) packages
+##      replacePackage  - purge package $1 and install package $2
+##      installKeyring  - install a keyring package
+##      refreshPackages - update and upgrade packages
+##
+##  Wrapper functions for groups:
+##
+##      addUserToGroups         - safely add a user to one or more groups
+##      delUserFromGroups       - safely remove a user from one or more groups
+##
+##  Workhorse functions:
+##
+##      MassageFile     - substitute %HOST% with $HOSTNAME etc. (internal)
+##      Deploy          - deploy file from ~/keep to /etc or where ever
+##      SaveCurrent     - copy file from /etc/ to ~/keep without release suffix
+##      CopyToKeep      - copy file from /etc/ to ~/keep and add release suffix
+##      FetchOurOwn     - fetch our own configuration (patch) file into the ~/keep area
+##      InstallOurOwn   - fetch and install our own configuration file
+##      RemoveOurOwn    - reverse of InstallOurOwn
+##      ApplyPatch      - apply patches to the copy ~/keep with the release suffix and deploy the result
+##      InsertIntoFile  - DIY hosts.d
+##
+##  Sanity check functions (is the configuration up to date ?):
+##
+##      CheckDeployed   - check the file in /etc matches the that in ~/keep after substitution
+##      CheckCurrent    - check the file in /etc is backed up in ~/keep
+##      CheckOriginal   - check the original file in /etc is backed up in ~/keep with a release suffix
+##      CheckMaster     - check our own configuration file against the file in the ~/keep area
+##      CheckOurOwn     - check our own configuration file is deplyed
+##      CheckPatch      - check our patches are up to date (but not that they have been applied)
+##      CheckDotDir     - check function for InsertIntoFile
+##
+##  Network independence (no hard wiring of LAN):
+##
+##      LanAddress      - host's IP address
+##      LanName         - from LanAddress
+##
+
+# Trivial Functions
+
+error() { echo -e "\e[35m${0##*/}: \e[31m$@\e[0m"; }
+note()  { echo -e "\e[35m${0##*/}: \e[32m$@\e[0m"; }
+
+quit()  { trap '-' EXIT; exit $1; }
+
+badOption()     { error "step \"$1\" not recognised"; }
+
+function listOptions
+{
+    note "Choose from the steps ...";
+    listSteps "${installBin}/${0##*/}-$2" | fgrep "$1.";
+}
+
+function ListLoggedSteps
+{
+    sed -e "s/  */ /g" -e "s/^[^ ]* [^ ]* $1\./$1./" -e "/^$1\./!d" ${logFile} | sort -u;
+}
+
+# recursive function
+
+function listSteps
+{
+    sed -e '/^        /d' -e '/^ *(.*)$/!d' -e '/(\*)/d' -e 's/[(|)]//g' $1 | while read step mnemonic; do
+        if [[ "${step}" == "n/a" ]]; then
+            continue;
+        fi
+        if [[ "${mnemonic%\*}" != "${mnemonic}" ]]; then
+            path="${installBin}/${0##*/}-${mnemonic%\*}";
+            if [[ -r "${path}" ]]; then
+                listSteps "${path}";
+                continue;
+            fi
+        fi
+        if [[ "${step%.*}" != "${step}" ]]; then
+            text=$(grep -A 1 "${step} ${mnemonic}" $1 | sed -e '/note/!d' -e 's/.*"\(.*\)".*/\1/');
+            printf "%-7s %-23s %s\n" "${step}" "${mnemonic}" "${text}";
+        fi
+    done;
+}
+
+# Helper functions
+
+exec 8<&0;
+exec 9<&1;
+
+function DoOrDie()
+{
+    echo "   " "$@" >&9;
+    eval "$@" <&8 || exit 1;
+}
+
+function DoOrDieHere()
+{
+    echo "   " "$@" '<< EOF' >&9;
+    eval "$@" || exit 1;
+}
+
+function DoOrDieLocal()
+{
+    local sudo script;
+
+    [[ "$1" == "sudo" ]] && sudo="$1" && shift;
+
+    script="$1" && shift;
+
+    echo "   " ${sudo} "${script}" "$@" >&9;
+    eval ${sudo} "${HOME}/bin/${script}" "$@" <&8 || exit 1;
+}
+
+# Wrapper functions for the package manager
+
+function installPackage
+{
+    for package; do
+        DoOrDieLocal doapt-get -y install "${package}";
+    done
+}
+
+function replacePackage
+{
+    dpkg -l | fgrep -l "$1" &> /dev/null && DoOrDieLocal doapt-get purge "$1";
+
+    DoOrDieLocal doapt-get install "$2";
+}
+
+function installKeyring
+{
+    DoOrDieLocal doapt-get update;
+    DoOrDieLocal doapt-get install "$1";
+    DoOrDieLocal doapt-get update;
+}
+
+function refreshPackages
+{
+    DoOrDieLocal doapt-get upgrade;
+    DoOrDieLocal doapt-get dist-upgrade;
+    DoOrDieLocal doapt-get autopurge;
+    DoOrDieLocal doapt-get autoclean;
+}
+
+# Wrapper functions for the groups
+
+function addToGroup
+{
+    local user = "$1" && shift;
+
+    for group; do
+        if ! grep -q "${group}:.*${user}\b" /etc/group; then
+            DoOrDie sudo addgroup "${user}" "${group}";
+        fi
+    done
+
+    if [[ "${user}" == "${USER}" ]]; then
+        if [[ $# -eq 1 ]]; then
+            note "Log out and back in again to join the group $1";
+        else
+            note "Log out and back in again to join the groups";
+        fi
+    fi
+}
+
+function delFromGroup
+{
+    local user = "$1" && shift;
+
+    for group; do
+        if grep -q "${group}:.*${user}\b" /etc/group; then
+            DoOrDie sudo delgroup "${user}" "${group}";
+        fi
+    done
+
+    if [[ "${user}" == "${USER}" ]]; then
+        if [[ $# -eq 1 ]]; then
+            note "Log out and back in again to leave the group $1";
+        else
+            note "Log out and back in again to leave the groups";
+        fi
+    fi
+}
+
+# Workhorse functions
+
+function masterPath
+{
+    local prefix master;
+
+    prefix="${1#/}";
+    prefix="${prefix%%/*}";
+
+    master="${installShare}/${0##*/}$1";
+    if [[ -e "${master/${prefix}/${alternative-${HOSTNAME}}}" ]]; then
+        master="${master/${prefix}/${alternative-${HOSTNAME}}}";
+    fi
+
+    echo ${master};
+}
+
+function Deploy
+{
+    local sudo opt path keep;
+
+    [[ "$1" == "--sudo" ]] && sudo="$1" && shift;
+    [[ "$1" == "--opt" ]] && opt="$1" && shift;
+
+    for path; do
+        keep="${HOME}/keep${path}";
+
+        [[ -n "${opt}" && ! -e "${keep}" ]] && continue;
+
+        if [[ ! -d "${path%/*}" ]]; then
+            sudo mkdir -p "${path%/*}" || return 1;
+        fi
+
+        sudo cp --no-preserve=owner "${keep}" "${path}" || return 1;
+
+        if [[ -n "${sudo}" ]]; then
+            sudo chown --reference="${keep}" "${path}" || return 1;
+        fi
+    done
+}
+
+function SaveCurrent
+{
+    local sudo path keep;
+
+    [[ "$1" == "--sudo" ]] && sudo="$1" && shift;
+
+    for path; do
+        keep="${HOME}/keep${path}";
+
+        mkdir -p "${keep%/*}" || return 1;
+        ${sudo/--/} cp -p "${path}" "${keep}" || return 1;
+    done
+}
+
+function CopyToKeep
+{
+    local sudo path keep old previous reply;
+
+    [[ "$1" == "--sudo" ]] && sudo="$1" && shift;
+
+    for path; do
+        keep="${HOME}/keep${path}.${RELEASE}";
+        if [[ ! -e "${keep}" ]]; then
+            for old in $(ls -dvr "${HOME}/keep${path}".* 2> /dev/null); do
+                [[ "${old}" != "${old/.patch/}" ]] && continue;
+                [[ -h "${old}" ]] && continue;
+
+                previous="${old}";
+                break;
+            done
+
+            if [[ -n "${previous}" ]]; then
+                note "This version: ${keep##*/}";
+                note "Last version: ${previous##*/}";
+                read -p "Last version still good ? [y/N] " reply;
+
+                if [[ "${reply^}" == "Y" ]]; then
+                    ln -sf "${previous##*/}" "${keep}"  || return 1;
+                    continue;
+                fi
+            fi
+
+            mkdir -p "${keep%/*}" || return 1;
+            ${sudo/--/} cp -p "${path}" "${keep}" || return 1;
+        fi
+    done
+}
+
+function FetchOurOwn
+{
+    local sudo opt path keep master;
+
+    [[ "$1" == "--sudo" ]] && sudo="$1" && shift;
+    [[ "$1" == "--opt" ]] && opt="$1" && shift;
+
+    for path; do
+        keep="${HOME}/keep${path}";
+        master=$(masterPath "${path}");
+
+        if [[ -e "${master}" ]]; then
+            if [[ ! -e "${keep}" ]] || ! ${sudo/--/} cmp -s "${master}" "${keep}"; then
+                mkdir -p "${keep%/*}" || return 1;
+                ${sudo/--/} cp -p "${master}" "${keep}" || return 1;
+            fi
+        fi
+    done
+}
+
+function InstallOurOwn
+{
+    FetchOurOwn "$@" || return 1;
+
+    Deploy "$@" || return 1;
+}
+
+function RemoveOurOwn
+{
+    local path keep;
+
+    for path; do
+        keep="${HOME}/keep${path}";
+
+        sudo rm -f "${path}" || return 1;
+        rm -f "${keep}" || return 1;
+    done
+}
+
+function ApplyPatch
+{
+    local sudo next path keep patch;
+
+    [[ "$1" == "--sudo" ]] && sudo="$1" && shift;
+
+    for next; do
+        if [[ "${next:0:1}" == "/" ]]; then
+            # absolute path - tells us all
+            path="${next}";
+            keep="${HOME}/keep${path}";
+
+            ${sudo/--/} rm -f "${keep}"{.orig,.ref} || return 1;
+            ${sudo/--/} cp -p "${keep}.${RELEASE}" "${keep}" || return 1;
+
+            patch="${path}.patch";
+        else
+            # not absolute path - apply another patch to current path
+            patch="${path%/*}/${next}.patch";
+        fi
+
+        FetchOurOwn ${sudo} "${patch}";
+
+        cd "${keep%/*}" > /dev/null;
+            if [[ -e "${patch##*/}" ]]; then
+                ${sudo/--/} patch -i "${patch##*/}" || return 1;
+            fi
+        cd - > /dev/null;
+
+        Deploy "${path}" || return 1;
+    done
+}
+
+function InsertIntoFile
+{
+    local sudo addr path keep patch src alt;
+
+    [[ "$1" == "--sudo" ]] && sudo="$1" && shift;
+
+    addr="$1" && shift;
+    path="$1" && shift;
+    keep="${HOME}/keep${path}";
+
+    ApplyPatch "${path}" || return 1;
+
+    mkdir -p "${keep}.d" || return 1;
+
+    for patch; do
+        src="${installShare}/${0##*/}${path}.d";
+        if [[ -d "${src}" ]]; then
+            cp -pf "${src}"/*"${patch}" "${keep}.d" 2> /dev/null;
+        fi
+
+        alt=$(masterPath "${path}.d")
+        if [[ "${alt}" != "${src}" && -d "${alt}" ]]; then
+            cp -pf "${alt}"/*"${patch}" "${keep}.d" 2> /dev/null;
+        fi
+    done
+
+    for patch in "${keep}.d"/*[^~]; do
+        sed -i "${keep}" -e "${addr}r ${patch}" || return 1;
+    done
+}
+
+# Sanity check functions
+
+function CheckDeployed
+{
+    local sudo opt file backup;
+
+    [[ "$1" == "--sudo" ]] && sudo="$1" && shift;
+    [[ "$1" == "--opt" ]] && opt="$1" && shift;
+
+    for file; do
+        backup="${HOME}/keep${file}";
+
+        [[ -n "${opt}" && ! -e "${backup}" ]] && continue;
+
+        if [[ ! -e "${file}" ]]; then
+            error "${file} not deployed";
+        elif [[ ! -e "${backup}" ]]; then
+            error "${file} backup copy missing";
+        elif ${sudo/--/} diff "${backup}" "${file}"; then
+            error "${file} discrepancy with backup";
+        fi
+    done
+}
+
+function CheckCurrent
+{
+    local sudo file backup;
+
+    [[ "$1" == "--sudo" ]] && sudo="$1" && shift;
+
+    for file; do
+        backup="${HOME}/keep${file}";
+
+        if [[ ! -e "${file}" ]]; then
+            error "${file} not present";
+        elif [[ ! -e "${backup}" ]]; then
+            error "${file} backup copy missing";
+        elif ! ${sudo/--/} diff "${file}" "${backup}"; then
+            error "${file} discrepancy with backup";
+        fi
+    done
+}
+
+function CheckOriginal
+{
+    local sudo opt sfx file backup old first;
+
+    [[ "$1" == "--sudo" ]] && sudo="$1" && shift;
+    [[ "$1" == "--opt" ]] && opt="$1" && shift;
+
+    [[ "${1:0:2}" == "--" ]] && sfx="${1:2}" && shift;
+
+    for file; do
+        [[ -n "${opt}" && ! -e "${file}" ]] && continue;
+
+        backup="${HOME}/keep${file}.${sfx-${RELEASE}}";
+
+        [[ -e "${backup}" ]] && continue;
+
+        error "${file} backup ${backup##*/} missing";
+
+        [[ -n "${sfx}" ]] && continue;
+
+        for old in $(ls -dvr "${HOME}/keep${file}".* 2> /dev/null); do
+            [[ "${old}" != "${old/.patch/}" ]] && continue;
+
+            if [[ ! -h "${old}" ]]; then
+                note "Last backup:  ${old##*/}";
+                break;
+            fi
+
+            if [[ -z "${first}" ]]; then
+                note "Last version: ${old##*/}";
+                first="false";
+            fi
+        done
+    done
+}
+
+function CheckMaster
+{
+    local sudo opt nokeep file backup master;
+
+    [[ "$1" == "--sudo" ]] && sudo="$1" && shift;
+    [[ "$1" == "--opt" ]] && opt="$1" && shift;
+    [[ "$1" == "--nokeep" ]] && nokeep="$1" && shift;
+
+    for file; do
+        backup="${HOME}/keep${file}";
+        master=$(masterPath "${file}");
+
+        [[ -n "${opt}" && ! -e "${master}" ]] && continue;
+
+        if [[ ! -e "${master}" ]]; then
+            if [[ -z "${opt}" ]]; then
+                error "${file} master file missing";
+            fi
+        elif [[ -n "${nokeep}" ]]; then
+            if [[ ! -e "${file}" ]]; then
+                error "${file} file missing";
+            elif ! ${sudo/--/} diff "${master}" "${file}"; then
+                error "${file} discrepancy with master file";
+            fi
+        else
+            if [[ ! -e "${backup}" ]]; then
+                error "${file} keep file missing";
+            elif ! ${sudo/--/} diff "${master}" "${backup}"; then
+                error "${file} discrepancy between master and keep files";
+            fi
+        fi
+    done
+}
+
+function CheckOurOwn
+{
+    CheckMaster "$@";
+
+    CheckDeployed "$@";
+}
+
+function CheckPatch
+{
+    local sudo opt next file patch master;
+
+    [[ "$1" == "--sudo" ]] && sudo="$1" && shift;
+    [[ "$1" == "--opt" ]] && opt="$1" && shift;
+
+    for next; do
+        if [[ "${next:0:1}" == "/" ]]; then
+            # absolute path - tells us all
+            file="${next}";
+
+            CheckDeployed ${sudo} "${file}";
+
+            patch="${file}.patch";
+        else
+            # not absolute path - apply another patch to current path
+            patch="${file%/*}/${next}.patch";
+        fi
+
+        backup="${HOME}/keep${patch}";
+        master=$(masterPath "${patch}");
+
+        [[ -n "${opt}" && ! -e "${backup}" ]] && continue;
+
+        if [[ ! -e "${master}" ]]; then
+            error "${patch##*/} patch master missing";
+        elif [[ ! -e "${backup}" ]]; then
+            error "${patch##*/} patch backup missing";
+        elif ! ${sudo/--/} diff "${master}" "${backup}"; then
+            error "${patch##*/} patch discrepancy";
+        fi
+    done
+}
+
+function CheckDotDir
+{
+    local sudo target file patch master;
+
+    [[ "$1" == "--sudo" ]] && sudo="$1" && shift;
+
+    target="$1" && shift;
+
+    CheckPatch ${sudo} --opt "$target";
+
+    for file; do
+        patch=$(ls "${HOME}/keep${target}.d/"*"${file}" 2> /dev/null);
+        master=$(masterPath "${patch#*/keep}");
+
+        if [[ ! -e "${patch}" ]]; then
+            error "${file} patch backup missing";
+        elif [[ ! -e "${master}" ]]; then
+            error "${file} patch master missing";
+        elif ! ${sudo/--/} diff "${patch}" "${master}"; then
+            error "${file} patch discrepancy";
+        fi
+    done
+}
+
+# Network independence
+
+function LanAddress
+{
+    ip route | awk '
+      /default/ { if (nic == 0) nic = $5; next; }
+                { if (nic != 0 && $3 == nic) {dest = $1 } }
+      END       { printf "%s\n", dest }
+    ';
+}
+
+function LanName
+{
+    local subnet=$(LanAddress);
+
+    sed -e "/${subnet%/*}/s/\t.*//p" -e d /etc/networks;
+}
+
+### Local Variables: ***
+### mode:ksh ***
+### End: ***

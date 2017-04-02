@@ -1,0 +1,87 @@
+#!/bin/bash --posix
+
+##
+##  Goal:   semi-automate system configuration of encrypted volumes
+##
+##  Use:    source sysconf-encrypt
+##
+##  NB:     The caller must source functions etc à la sysconf script.
+##
+
+# do it
+
+function encryptConf
+{
+    case "$1" in
+      (9 | encrypt)
+        listOptions 9 encrypt;
+        quit;
+        ;;
+
+      (9.1 | encryptInstall)
+        step="9.1 encryptInstall";
+        note "Install the cryptsetup package ...";
+
+        installPackage cryptsetup;
+        ;;
+
+      (9.2 | encryptConfigure)
+        step="9.2 encryptConfigure";
+        note "Configure the cryptsetup package ...";
+
+        DoOrDie CopyToKeep /etc/crypttab;
+        DoOrDie InstallOurOwn /etc/crypttab;
+        ;;
+
+      (9.3 | encryptCreate)
+        step="9.3 encryptCreate";
+        note "Create the encrypted volume ...";
+
+        DoOrDie sudo cryptsetup --verbose --verify-passphrase luksFormat /dev/md0;
+        DoOrDie sudo cryptsetup luksOpen /dev/md0 md0_crypt;
+        DoOrDie sudo mkfs.ext3 -L crypt /dev/mapper/md0_crypt;
+        ;;
+
+      (9.4 | encryptMount)
+        step="9.4 encryptMount";
+        note "Start and mount the encrypted volume ...";
+
+        DoOrDie sudo service cryptdisks force-start;
+        DoOrDie sudo mkdir -p /crypt;
+        DoOrDie mount /crypt;
+        ;;
+
+      (9.5 | encryptUmount)
+        step="9.5 encryptUmount";
+        note "Unmount and stop the encrypted volume ...";
+
+        DoOrDie umount /crypt;
+        DoOrDie sudo service cryptdisks stop;
+        ;;
+
+      (9.99)
+        step="9.99 sanityCheck";
+        note "Checking encrypt ...";
+        ListLoggedSteps ${1%.*} | while read step name status; do
+            echo -e $step $name $status
+            case "$step $name" in
+              ("9.2 encryptConfigure")
+                CheckOriginal /etc/crypttab;
+                CheckOurOwn /etc/crypttab;
+                ;;
+            esac
+        done
+        quit;
+        ;;
+
+      (*)
+        badOption "$1";
+        listOptions 9 encrypt;
+        quit 1;
+        ;;
+    esac
+}
+
+### Local Variables: ***
+### mode:ksh ***
+### End: ***

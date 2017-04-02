@@ -1,0 +1,79 @@
+#!/bin/bash --posix
+
+##
+##  Goal:   semi-automate system configuration of the apache web server
+##
+##  Use:    source sysconf-apache
+##
+##  NB:     The caller must source functions etc à la sysconf script.
+##
+
+# do it
+
+function apacheConf
+{
+    case "$1" in
+      (25 | apache)
+        listOptions 25 apache;
+        quit;
+        ;;
+
+      (25.1 | apacheInstall)
+        step="25.1 apacheInstall";
+        note "Install apache packages ...";
+        installPackage apache2;
+        ;;
+
+      (25.2 | apacheConfigure)
+        step="25.2 apacheConfigure";
+        note "Configure apache daemon and server ...";
+
+        DoOrDie sudo invoke-rc.d apache2 stop;
+        DoOrDie sudo update-rc.d apache2 disable;
+
+        addUserToGroups "${USER}" www-data;
+        addUserToGroups www-data users;
+        DoOrDie SaveCurrent /etc/group;
+        ;;
+
+      (25.3.D | apacheDisable)
+        step="25.3.D apacheDisable";
+        note "Disable apache web server ...";
+
+        DoOrDie sudo invoke-rc.d apache2 stop;
+        DoOrDie sudo update-rc.d apache2 disable;
+        ;;
+
+      (25.3.E | apacheEnable)
+        step="25.3.E apacheEnable";
+        note "Enable apache web server ...";
+
+        DoOrDie sudo update-rc.d apache2 enable;
+        DoOrDie sudo invoke-rc.d apache2 start;
+        ;;
+
+      (25.99)
+        step="25.99 sanityCheck";
+        note "Checking apache ...";
+        ListLoggedSteps ${1%.*} | while read step name status; do
+            echo -e $step $name $status;
+            case "$step $name" in
+              ("25.2 apacheConfigure")
+                CheckCurrent /etc/{group,passwd};
+                ;;
+            esac
+        done
+        quit;
+        ;;
+
+      (*)
+        badOption "$1";
+        listOptions 25 apache;
+        quit 1;
+        ;;
+    esac
+}
+
+### Local Variables: ***
+### mode:ksh ***
+### End: ***

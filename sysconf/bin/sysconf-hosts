@@ -1,0 +1,88 @@
+#!/bin/bash --posix
+
+##
+##  Goal:   semi-automate system configuration of hosts files
+##
+##  Use:    source sysconf-hosts
+##
+##  NB:     The caller must source functions etc à la sysconf script.
+##
+
+# do it
+
+function hostsConf
+{
+    case "$1" in
+      (4 | hosts)
+        listOptions 4 hosts;
+        quit;
+        ;;
+
+      (4.1 | 4.1.R | hostsConfigure)
+        step="4.1 hostsConfigure";
+        note "Configure hosts and networks ...";
+
+        DoOrDie InstallOurOwn --opt /etc/ethers;
+
+        DoOrDie CopyToKeep /etc/networks;
+        DoOrDie ApplyPatch /etc/networks;
+
+        if [[ "$1" != "4.1.R" ]]; then
+            DoOrDie rm -fr keep/etc/hosts.d;
+        fi
+
+        DoOrDie CopyToKeep /etc/hosts;
+        DoOrDie InsertIntoFile '2' /etc/hosts hosts-local;
+
+        if [[ $(fgrep -c "${HOSTNAME}" keep/etc/hosts) -gt 1 ]]; then
+            DoOrDie sed -i keep/etc/hosts -e "'2d'";
+        fi
+
+        DoOrDie Deploy /etc/hosts;
+        ;;
+
+      (4.2 | 4.2.R | hostsAccess)
+        step="4.2 hostsAccess";
+        note "Configure hosts.allow and hosts.deny ...";
+
+        if [[ "$1" != "4.2.R" ]]; then
+            DoOrDie rm -fr keep/etc/hosts.allow.d;
+        fi
+
+        DoOrDie CopyToKeep /etc/{hosts.allow,hosts.deny};
+        DoOrDie ApplyPatch /etc/{hosts.allow,hosts.deny};
+        ;;
+
+      (4.99)
+        step="4.99 sanityCheck";
+        note "Checking hosts ...";
+        ListLoggedSteps ${1%.*} | while read step name status; do
+            echo -e $step $name $status
+            case "$step $name" in
+              ("4.1 hostsConfigure")
+                CheckOurOwn --opt /etc/ethers;
+                CheckOriginal /etc/networks;
+                CheckPatch /etc/networks;
+                CheckOriginal /etc/hosts;
+                CheckDotDir /etc/hosts hosts-local;
+                ;;
+              ("4.2 hostsAccess")
+                CheckOriginal /etc/{hosts.allow,hosts.deny};
+                CheckPatch /etc/{hosts.allow,hosts.deny};
+                ;;
+            esac
+        done
+        quit;
+        ;;
+
+      (*)
+        badOption "$1";
+        listOptions 4 hosts;
+        quit 1;
+        ;;
+    esac
+}
+
+### Local Variables: ***
+### mode:ksh ***
+### End: ***

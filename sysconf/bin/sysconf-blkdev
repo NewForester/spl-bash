@@ -1,0 +1,228 @@
+#!/bin/bash --posix
+
+##
+##  Goal:   semi-automate system configuration of block devices
+##
+##  Use:    source sysconf-blkdev
+##
+##  NB:     The caller must source functions etc à la sysconf script.
+##
+
+function labelpartition
+{
+    local label="$1"; shift;
+    local device;
+
+    for device; do
+        if [[ -b ${device} ]]; then
+            DoOrDie sudo e2label ${device} ${label};
+            return;
+        fi
+    done
+
+    exit 1;
+}
+
+# do it
+
+function blkdevConf
+{
+    case "$1" in
+      (8 | blkdev)
+        listOptions 8 blkdev;
+        quit;
+        ;;
+
+      (8.1 | blkdevInstallTools)
+        step="8.1 blkdevInstallTools";
+        note "Ensure file system tools are installed";
+
+        installPackage ntfs-3g xfsprogs;
+        ;;
+
+      (8.2 | blkdevMedia)
+        step="8.2 blkdevMedia";
+        note "Rearrange CD/DVD mount points ...";
+
+        cd /media > /dev/null;
+
+            if [[ -h floppy ]]; then
+                DoOrDie sudo rm -f floppy;
+                DoOrDie sudo mv -f floppy0 floppy;
+            fi
+            case "${HOSTNAME}" in
+              (alder | birch | olive)
+                if [[ -d cdrom0 ]]; then
+                    DoOrDie sudo rm -f cdrom;
+                    DoOrDie sudo mv -f cdrom0 cdrom;
+                fi
+                if [[ -d cdrom1 ]]; then
+                    DoOrDie sudo mv -f cdrom1 dvd;
+                fi
+                ;;
+              (*)
+                if [[ -d cdrom0 ]]; then
+                    DoOrDie sudo mv -f cdrom0 dvd;
+                    DoOrDie sudo rm -f cdrom;
+                    DoOrDie sudo ln -sf dvd/ cdrom;
+                fi
+                ;;
+            esac
+            if [[ -e usb ]]; then
+                DoOrDie sudo rm usb;
+                DoOrDie sudo rmdir usb*;
+            fi
+
+        cd - > /dev/null;
+        ;;
+
+      (8.3 | blkdevOpt)
+        step="8.3 blkdevOpt";
+        note "Ensure all can use /opt";
+
+        DoOrDie sudo mount -a;
+
+        if [[ -b /dev/md5 ]]; then
+            if ! ls -l /dev/mapper | fgrep -q fstab_opt; then
+                DoOrDie sudo ~/bin/volume create fstab opt 2G;
+            fi
+            if ! mountpoint /opt > /dev/null; then
+                DoOrDie sudo mount "/dev/mapper/${HOSTNAME}-fstab_opt" /opt;
+            fi
+        fi
+
+        DoOrDie sudo chown root:sudo /opt;
+        DoOrDie sudo chmod g+w /opt;
+        ;;
+
+      (8.4 | blkdevLabels)
+        step="8.4 blkdevLabels";
+        note "Apply labels to standard partitions ...";
+
+        labelpartition root /dev/md1 /dev/sda5;
+        labelpartition home /dev/md2 /dev/sda6;
+        labelpartition usr  /dev/md3 /dev/sda7;
+        labelpartition var  /dev/md4 /dev/sda8;
+        labelpartition opt  "/dev/mapper/${HOSTNAME}-fstab_opt" /dev/sda9;
+        ;;
+
+      (8.5 | blkdevSwap)
+        step="8.5 blkdevSwap";
+        note "Label active swap partitions ...";
+
+        DoOrDie sudo swapon --summary > /tmp/labelswap || exit 1;
+        sed -i /tmp/labelswap \
+            -e '1d' -e 's/ .*//' -e 's/.*/sudo swaplabel -L & &/' \
+            -e 's~/dev/sd\(.\).~swap\1~' \
+            -e 's~/dev/mapper[^_]*_~~'
+
+        local line;
+        while read line; do
+           echo "   " "${line}";
+           DoOrDie sudo ${line} || exit 1;
+        done < /tmp/labelswap
+        ;;
+
+      (8.6 | blkdevResume)
+        step="8.6 blkdevResume";
+        note "Change resume to use swap label not the uuid ...";
+
+        DoOrDie CopyToKeep /etc/initramfs-tools/conf.d/resume;
+        DoOrDie InstallOurOwn /etc/initramfs-tools/conf.d/resume;
+        DoOrDie sudo update-initramfs -u;
+        ;;
+
+      (8.7 | blkdevFstab)
+        step="8.7 blkdevFstab";
+        note "Change fstab to use labels not the uuids ...";
+
+        DoOrDie CopyToKeep /etc/fstab;
+        DoOrDie FetchOurOwn /etc/fstab;
+
+        local keep="keep/etc/fstab";
+        local label, device, mp;
+
+        for label in swapa swapb; do
+            if [[ ! -h "/dev/disk/by-label/${label}" ]]; then
+                DoOrDie sed -i "${keep}" -e "'/${label}/d'";
+            fi
+        done
+        for label in crypt; do
+            if [[ ! -e "/dev/md0" ]]; then
+                DoOrDie sed -i "${keep}" -e "'/${label}/d'";
+            fi
+        done
+        for device in fd0 sr0 sr1; do
+            if [[ ! -e "/dev/${device}" ]]; then
+                DoOrDie sed -i "${keep}" -e "'/${device}/d'";
+            fi
+        done
+        for mp in /opt; do
+            if fgrep -q "${mp} xfs" /etc/mtab; then
+                DoOrDie sed -i "${keep}" -e "'/\\/${mp}/s/ext4/xfs /'";
+            fi
+        done
+
+        DoOrDie Deploy /etc/fstab;
+
+        note "Check this and amend by hand if necessary before going any further";
+        cat /etc/fstab;
+        ;;
+
+      (8.8 | blkdevRaid)
+        step="8.8 blkdevRaid";
+        note "Backup the RAID configuration ...";
+
+        DoOrDie CopyToKeep /etc/mdadm/mdadm.conf;
+        ;;
+
+      (8.99)
+        step="8.99 sanityCheck";
+        note "Checking blkdev ...";
+        ListLoggedSteps ${1%.*} | while read step name status; do
+            echo -e $step $name $status
+            case "$step $name" in
+              ("8.1 blkdevInstallTools")
+                ;;
+              ("8.2 blkdevMedia")
+                (cd /media && ls -ld fd* cd* dvd* usb*) 2> /dev/null;
+                ;;
+              ("8.3 blkdevOpt" | "8.7 blkdevOpt" | "8.6 blkdevOpt")
+                ;;
+              ("8.4 blkdevLabels" | "8.3 blkdevLabels" | "8.5.A blkdevLabels")
+                (cd /dev/disk/by-label && ls -ld root home usr var opt);
+                ;;
+              ("8.5 blkdevSwap" | "8.4 blkdevSwap")
+                (cd /dev/disk/by-label && ls -ld swap*);
+                ;;
+              ("8.3 blkdevSwap")
+                (cd /dev/disk/by-label && ls -ld root home usr var opt);
+                (cd /dev/disk/by-label && ls -ld swap*);
+                ;;
+              ("8.6 blkdevResume" | "8.5 blkdevResume" | "8.4 blkdevResume")
+                CheckOriginal /etc/initramfs-tools/conf.d/resume;
+                CheckOurOwn /etc/initramfs-tools/conf.d/resume;
+                ;;
+              ("8.7 blkdevFstab" | "8.6 blkdevFstab" | "8.5 blkdevFstab")
+                CheckOriginal /etc/fstab;
+                CheckDeployed /etc/fstab;
+                ;;
+              ("8.8 blkdevRaid" | "8.7 blkdevRaid")
+                CheckOriginal /etc/mdadm/mdadm.conf;
+                ;;
+            esac
+        done
+        quit;
+        ;;
+
+      (*)
+        badOption "$1";
+        listOptions 8 blkdev;
+        quit 1;
+        ;;
+    esac
+}
+
+### Local Variables: ***
+### mode:ksh ***
+### End: ***

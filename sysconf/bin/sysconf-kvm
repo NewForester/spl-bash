@@ -1,0 +1,128 @@
+#!/bin/bash --posix
+
+##
+##  Goal:   semi-automate system configuration of qemu/kvm
+##
+##  Use:    source sysconf-kvm
+##
+##  For Debian wheezy, we've dropped the installation of qemu proper.
+##
+##  With it go vde and dnsmasq and the associated configuration for
+##  which we never really found any practical use.
+##
+##  The redundant lines are simply commented out for now.
+##
+##  Setting up the bridged network interface is handled by sysconf-net.
+##  Adding kvm group membership is handled by usrconf.group.
+##
+##  NB:     The caller must source functions etc à la sysconf script.
+##
+
+# do it
+
+function kvmConf
+{
+    case "$1" in
+      (21 | kvm)
+        listOptions 21 kvm;
+        quit;
+        ;;
+
+      (21.1 | kvmInstall)
+        step="21.1 kvmInstall";
+        note "Install qemu-kvm ...";
+        installPackage bridge-utils user-mode-linux qemu-kvm kpartx;
+        ;;
+
+      (21.2 | kvmSetup)
+        step="21.2 kvmSetup";
+        note "Set up qemu-kvm ...";
+
+        echo "... neuter the unhelpful up/down scripts";
+        DoOrDie CopyToKeep /etc/kvm/kvm-{ifup,ifdown};
+        DoOrDie InstallOurOwn /etc/kvm/kvm-{ifup,ifdown};
+
+        echo "... allow group kvm to create/destroy tunnel devices";
+        DoOrDie InstallOurOwn /etc/sudoers.d/vmif;
+        ;;
+
+      (21.3 | kvmInstallVde)
+        step="21.3 kvmInstallVde";
+        note "Install vde ...";
+        installPackage dnsmasq vde2;
+        ;;
+
+      (21.4 | kvmConfigureVde)
+        step="21.4 kvmConfigureVde";
+        note "Configure dnsmasq ...";
+
+        echo "... configure DNS for the vde";
+        DoOrDie CopyToKeep /etc/dnsmasq.conf;
+        DoOrDie ApplyPatch /etc/dnsmasq.conf;
+        ;;
+
+      (21.5 | kvmInstallQemu)
+        step="21.5 kvmInstallQemu";
+        note "Install qemu ...";
+        installPackage qemu;
+        ;;
+
+      (21.6 | kvmSetupQemu)
+        step="21.6 kvmSetupQemu";
+        note "Setup qemu ...";
+
+        echo "... neuter the unhelpful up/down scripts";
+        DoOrDie CopyToKeep /etc/qemu-ifup;
+        DoOrDie InstallOurOwn /etc/qemu-ifup;
+        ;;
+
+      (21.7 | kvmWxp)
+        step="21.7 kvmWxp";
+        note "Install desktop icon for Windows™ XP";
+#        DoOrDie FetchOurOwn /usr/share/applications/wpoX3.desktop.sh;
+#        cd keep/usr/share/applications > /dev/null;
+#               DoOrDie ./wpoX3.desktop.sh > wpoX3.desktop;
+#               DoOrDie sudo cp -p wpoX3.desktop /usr/share/applications;
+#        cd - > /dev/null;
+        sysconf iconsWindows;
+        quit 1;
+        ;;
+
+      (21.99)
+        step="21.99 sanityCheck";
+        note "Checking kvm ...";
+        ListLoggedSteps ${1%.*} | while read step name status; do
+            echo -e $step $name $status;
+            case "$step $name" in
+              ("21.2 kvmSetup")
+                CheckOriginal /etc/kvm/kvm-{ifup,ifdown};
+                CheckOurOwn /etc/kvm/kvm-{ifup,ifdown};
+                CheckOurOwn --sudo /etc/sudoers.d/vmif;
+                ;;
+              ("21.4 kvmConfigureVde")
+                CheckOriginal /etc/dnsmasq.conf;
+                CheckPatch /etc/dnsmasq.conf;
+                ;;
+              ("21.6 kvmSetupQemu")
+                CheckOriginal /etc/qemu-ifup;
+                CheckOurOwn /etc/qemu-ifup;
+                ;;
+              ("21.7 kvmWxp")
+                CheckOurOwn /usr/share/applications/wpoX3.desktop;
+                ;;
+            esac
+        done
+        quit;
+        ;;
+
+      (*)
+        badOption "$1";
+        listOptions 21 kvm;
+        quit 1;
+        ;;
+    esac
+}
+
+### Local Variables: ***
+### mode:ksh ***
+### End: ***

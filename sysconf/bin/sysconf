@@ -1,0 +1,261 @@
+#!/bin/bash --posix
+
+##
+##  Goal:   semi-automate system configuration
+##
+##  Use:    sysconf --flag | [--check] step
+##
+##  where:  step is either a number or a mnemonic
+##
+##  Flags:  steps   list steps and mnemonics in numeric order
+##          log     list all the steps attempted so far
+##          current list the current step (last attempted)
+##          erase   erase the last (attempted) step from the log
+##          next    list the next steps to be done
+##          refresh reload the script from its reference
+##          help    list instruction for use
+##
+##  Files:  ~/keep/sysconf - the log of the sysconf steps attempted
+##
+##  System configuration is broken down into a number of steps.
+##  Each step is given a number:  the sequence of numbers is the suggested order in which the steps are done.
+##  Not all steps are relevant for every installation.
+##  Most steps are also given a mnemonic and that can be used instead of the number.
+##
+##  Note:   The first steps are bootstrap:  until they have been executed this script is not there to execute.
+##          It is expected they will be cut and pasted into a ssh login console.
+##
+
+cd;
+
+# print out header comment
+
+usage() { (sed -e "/^###/d" -e "/^##/!d" $0 && echo -e "\e[35m${0##*/}: \e[31m$@\e[0m") >&2; }
+
+# the log file
+logFile="${HOME}/keep/${0##*/}";
+
+# configuration source files are hosted here (until the automounter is configured)
+installHost=$NFS_HOST;
+
+# configuration source directories ...
+installShare="/media/share/linux";
+installBin="${installShare}/${0##*/}/bin";
+
+# ensure source files are accessible
+
+if [[ ! -e "${installBin}" ]]; then
+    if [[ ! -e ${installShare} ]]; then
+        sudo mkdir -p ${installShare} || exit 1;
+    fi
+    sudo mount ${installHost}:/export/share/linux ${installShare} || exit 1;
+fi
+
+# ensure no confusion over which binaries we are using
+
+PATH="${installBin}:/usr/bin:/bin";
+
+# helper functions
+
+source sysconf-functions;
+
+# process the first flag (if any) and quit
+
+while [[ -n "${1%%[!-]*}" ]]; do
+    source sysconf-flags;
+done
+
+# do it
+
+result="\e[31mFAILED\e[0m";
+trap 'printf "%-23s %-7s %-23s ${result}\n" "$(date +"%x %X")" ${step} >> ${logFile}' EXIT;
+
+
+if [[ "${1/./}" != "$1" ]]; then
+    [[ ${1%.99} == "$1" ]] && sudo pwd > /dev/null;
+else
+    [[ "${1,,}" != "$1" ]] && sudo pwd > /dev/null;
+fi
+
+case "$1" in
+
+  (99 | more.please)
+    step="more please";
+    error "No more steps until you provide them";
+    quit 1;
+    ;;
+
+  (31* | plugins*)
+    source sysconf-plugins;
+    pluginsConf "$@";
+    ;;
+
+  (30* | icons*)
+    source sysconf-icons;
+    iconsConf "$@";
+    ;;
+
+  (3[0-9]*)
+    badOption "$1";
+    quit 1;
+    ;;
+
+  (29* | vpn*)
+    source sysconf-vpn;
+    vpnConf "$@";
+    ;;
+
+  (28* | deluge*)
+    source sysconf-deluge;
+    delugeConf "$@";
+    ;;
+
+  (27* | trac*)
+    source sysconf-trac;
+    tracConf "$@";
+    ;;
+
+  (26* | moin*)
+    source sysconf-moin;
+    moinConf "$@";
+    ;;
+
+  (25* | apache*)
+    source sysconf-apache;
+    apacheConf "$@";
+    ;;
+
+  (22* | mythtv*)
+    source sysconf-mythtv;
+    mythtvConf "$@";
+    ;;
+
+  (21* | kvm*)
+    source sysconf-kvm;
+    kvmConf "$@";
+    ;;
+
+  (20* | apps*)
+    source sysconf-apps;
+    appsConf "$@";
+    ;;
+
+  (2[0-9]*)
+    badOption "$1";
+    quit 1;
+    ;;
+
+  (19* | mail*)
+    source sysconf-mail;
+    mailConf "$@";
+    ;;
+
+  (18* | printer*)
+    source sysconf-printer;
+    printerConf "$@";
+    ;;
+
+  (17* | sound*)
+    source sysconf-sound;
+    soundConf "$@";
+    ;;
+
+  (16* | login*)
+    source sysconf-login;
+    loginConf "$@";
+    ;;
+
+  (15* | user*)
+    source sysconf-user;
+    userConf "$@";
+    ;;
+
+  (14* | automounter*)
+    source sysconf-automounter;
+    automounterConf "$@";
+    ;;
+
+  (13* | samba*)
+    source sysconf-samba;
+    sambaConf "$@";
+    ;;
+
+  (12* | nfs*)
+    source sysconf-nfs;
+    nfsConf "$@";
+    ;;
+
+  (11* | ssh* | rsync* | rsh*)
+    source sysconf-ssh;
+    sshConf "$@";
+    ;;
+
+  (10*  | net*)
+    source sysconf-net;
+    netConf "$@";
+    ;;
+
+  (1[0-9]*)
+    badOption "$1";
+    quit 1;
+    ;;
+
+  (9*  | encrypt*)
+    source sysconf-encrypt;
+    encryptConf "$@";
+    ;;
+
+  (8*  | blkdev*)
+    source sysconf-blkdev;
+    blkdevConf "$@";
+    ;;
+
+  (7*  | udev*)
+    source sysconf-udev;
+    udevConf "$@";
+    ;;
+
+  (6*  | x11*)
+    source sysconf-x11;
+    x11Conf "$@";
+    ;;
+
+  (5*  | apt*)
+    source sysconf-apt;
+    aptConf "$@";
+    ;;
+
+  (4*  | hosts*)
+    source sysconf-hosts;
+    hostsConf "$@";
+    ;;
+
+  (3*  | firmware*)
+    source sysconf-firmware;
+    firmwareConf "$@";
+    ;;
+
+  (2*  | grub*)
+    source sysconf-grub;
+    grubConf "$@";
+    ;;
+
+  (initialSave | bashProfile | installScripts | mountSysconf | rootPassword)
+    ;&
+  (1* | bootstrap*)
+    source sysconf-bootstrap;
+    bootstrapConf "$@";
+    ;;
+
+  (*)
+    badOption "$1";
+    quit 1;
+    ;;
+esac
+
+result="\e[32mOK\e[0m";
+echo "... ${fini-done}";
+
+### Local Variables: ***
+### mode:ksh ***
+### End: ***

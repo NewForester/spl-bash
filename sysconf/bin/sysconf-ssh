@@ -1,0 +1,160 @@
+#!/bin/bash --posix
+
+##
+##  Goal:   semi-automate system configuration of ssh
+##
+##  Use:    source sysconf-ssh
+##
+##  NB:     The caller must source functions etc à la sysconf script.
+##
+
+# do it
+
+function sshConf
+{
+    case "$1" in
+      (11 | ssh)
+        listOptions 11 ssh;
+        quit;
+        ;;
+
+      (11.1 | sshInstall)
+        step="11.1 sshInstall";
+        note "Install ntp and ssh and rsync packages ...";
+
+        installPackage ntp openssh-client openssh-server rsync;
+        DoOrDie SaveCurrent /etc/{group,passwd};
+        ;;
+
+      (11.2 | sshConfigure)
+        step="11.2 sshConfigure";
+        note "Configure ssh access ...";
+
+        echo "... patch client and server configuration files";
+        DoOrDie CopyToKeep /etc/ssh/{ssh_config,sshd_config};
+        DoOrDie ApplyPatch /etc/ssh/{ssh_config,sshd_config};
+
+        echo "... install the known hosts file";
+        DoOrDie InstallOurOwn /etc/ssh/ssh_known_hosts;
+
+        echo "... update /etc/hosts.allow";
+        DoOrDie CopyToKeep /etc/hosts.allow;
+        DoOrDie InsertIntoFile '/localhost/' /etc/hosts.allow hosts.allow-ssh;
+        DoOrDie Deploy /etc/hosts.allow;
+
+        echo "... refresh the ssh service";
+        DoOrDie sudo service ssh stop;
+        DoOrDie sudo service ssh start;
+        ;;
+
+      (11.3 | sshKeys)
+        step="11.3 sshKeys";
+        note "Restore and backup ssh keys ...";
+
+        local keep="keep/etc/ssh";
+        local master="${installShare}/${0##*/}/${HOSTNAME}/ssh";
+
+        if [[ -e "${master}" ]]; then
+            echo "... restore ssh keys from a previous installation";
+            DoOrDie cp -p ${master}/*_key.pub ${keep};
+            DoOrDie sudo cp -p ${master}/*_key ${keep};
+
+            DoOrDie sudo cp --preserve=timestamps ${keep}/*_key.pub /etc/ssh;
+            DoOrDie sudo cp -p ${keep}/*_key /etc/ssh;
+        else
+            DoOrDie mkdir -p ${keep} ${master};
+        fi
+
+        echo "... backup ssh keys from the current installation";
+        DoOrDie cp -p /etc/ssh/*_key.pub ${keep};
+        DoOrDie sudo cp -p /etc/ssh/*_key ${keep};
+
+        DoOrDie cp -p ${keep}/*_key.pub ${master};
+        DoOrDie sudo cp -p ${keep}/*_key ${master};
+        ;;
+
+      (11.4 | rsyncInstall)
+        step="11.4 rsyncInstall";
+        note "Install rsync and inetd ...";
+
+        installPackage openbsd-inetd rsync;
+        ;;
+
+      (11.5 | rsyncConfigure)
+        step="11.5 rsyncConfigure";
+        note "Configure the rsync daemon and inetd ...";
+
+        echo "... configure inetd to run rsyncd";
+        DoOrDie CopyToKeep /etc/inetd.conf;
+        DoOrDie sudo update-inetd --group BSD --remove "'rsync'"
+        DoOrDie sudo update-inetd --group BSD --add "'rsync\t\tstream\ttcp\tnowait\troot\t/usr/bin/rsync rsyncd --daemon --bwlimit=56'"
+
+        echo "... install the local rsyncd configuration";
+        DoOrDie InstallOurOwn /etc/rsyncd.conf;
+        ;;
+
+      (11.6.C | rshNetkitClient)
+        step="11.6.C rshNetkitClient";
+        note "Install net-kit rsh client ...";
+
+        replacePackage rsh-redone-client rsh-client;
+        ;;
+
+      (11.6.S | rshNetkitServer)
+        step="11.6.S rshNetkitServer";
+        note "Install net-kit rsh server ...";
+
+        replacePackage rsh-redone-server rsh-server;
+        ;;
+
+      (11.7.C | rshRedoneClient)
+        step="11.7.C rshRedoneClient";
+        note "Install rsh redone client ...";
+
+        replacePackage rsh-client rsh-redone-client;
+        ;;
+
+      (11.7.S | rshRedoneServer)
+        step="11.7.S rshRedoneServer";
+        note "Install rsh redone server ...";
+
+        replacePackage rsh-server rsh-redone-server;
+        ;;
+
+      (11.99)
+        step="11.99 sanityCheck";
+        note "Checking ssh ...";
+        ListLoggedSteps ${1%.*} | while read step name status; do
+            case "$step $name" in
+              ("11.2 sshConfigure")
+                CheckOriginal /etc/ssh/{ssh_config,sshd_config};
+                CheckPatch /etc/ssh/{ssh_config,sshd_config};
+                CheckOurOwn /etc/ssh/ssh_known_hosts;
+                CheckOriginal /etc/hosts.allow;
+                CheckDotDir /etc/hosts.allow hosts.allow-ssh;
+                ;;
+              ("11.3 sshKeys")
+                CheckOurOwn --sudo /etc/ssh/ssh_host_*key;
+                CheckOurOwn /etc/ssh/ssh_host_*key.pub;
+                ;;
+              ("11.5 rsyncConfigure")
+                CheckOriginal /etc/inetd.conf;
+                CheckOurOwn /etc/rsyncd.conf;
+                ;;
+            esac
+            echo -e $step $name $status
+        done
+        quit;
+        ;;
+
+      (*)
+        badOption "$1";
+        listOptions 11 ssh;
+        quit 1;
+        ;;
+    esac
+}
+
+### Local Variables: ***
+### mode:ksh ***
+### End: ***

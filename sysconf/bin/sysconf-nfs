@@ -1,0 +1,103 @@
+#!/bin/bash --posix
+
+##
+##  Goal:   semi-automate system configuration of NFS
+##
+##  Use:    source sysconf-nfs
+##
+##  NB:     The caller must source functions etc à la sysconf script.
+##
+
+# do it
+
+function nfsConf
+{
+    case "$1" in
+      (12 | nfs)
+        listOptions 12 nfs;
+        quit;
+        ;;
+
+      (12.1.C | nfsClientInstall)
+        step="12.1.C nfsClientInstall";
+        note "Install NFS client ...";
+
+        installPackage nfs-common;
+        ;;
+
+      (12.1.S | nfsServerInstall)
+        step="12.1.S nfsServerInstall";
+        note "Install NFS server ...";
+
+        installPackage nfs-kernel-server;
+        ;;
+
+      (12.2.C | nfsClientConfigure)
+        step="12.2.C nfsClientConfigure";
+        note "Configure NFS client ...";
+
+        echo "... patch client configuration file";
+        DoOrDie CopyToKeep /etc/default/nfs-common;
+        DoOrDie ApplyPatch /etc/default/nfs-common;
+        ;;
+
+      (12.2.S | nfsServerConfigure)
+        step="12.2.S nfsServerConfigure";
+        note "Configure NFS server ...";
+
+        echo "... patch server configuration file";
+        DoOrDie CopyToKeep /etc/default/nfs-kernel-server;
+        DoOrDie ApplyPatch /etc/default/nfs-kernel-server;
+
+        echo "... update /etc/hosts.allow";
+        DoOrDie CopyToKeep /etc/hosts.allow;
+        DoOrDie InsertIntoFile '/localhost/' /etc/hosts.allow hosts.allow-nfs;
+        DoOrDie Deploy /etc/hosts.allow;
+        ;;
+
+      (12.3 | nfsExports)
+        step="12.3 nfsExports";
+        note "Install and configure (initial) NFS exports ...";
+
+        DoOrDie sudo mkdir -p /export;
+        DoOrDie CopyToKeep /etc/exports;
+        DoOrDie ApplyPatch /etc/exports;
+        DoOrDie sudo exportfs -a;
+        ;;
+
+      (12.99)
+        step="12.99 sanityCheck";
+        note "Checking nfs ...";
+        ListLoggedSteps ${1%.*} | while read step name status; do
+            echo -e $step $name $status
+            case "$step $name" in
+              ("12.2.C nfsClientConfigure")
+                CheckOriginal /etc/default/nfs-common;
+                CheckPatch /etc/default/nfs-common;
+                ;;
+              ("12.2.S nfsServerConfigure")
+                CheckOriginal /etc/default/nfs-kernel-server;
+                CheckPatch /etc/default/nfs-kernel-server;
+                CheckOriginal /etc/hosts.allow;
+                CheckDotDir /etc/hosts.allow hosts.allow-nfs;
+                ;;
+              ("12.3 nfsExports")
+                CheckOriginal /etc/exports;
+                CheckPatch /etc/exports;
+                ;;
+            esac
+        done
+        quit;
+        ;;
+
+      (*)
+        badOption "$1";
+        listOptions 12 nfs;
+        quit 1;
+        ;;
+    esac
+}
+
+### Local Variables: ***
+### mode:ksh ***
+### End: ***

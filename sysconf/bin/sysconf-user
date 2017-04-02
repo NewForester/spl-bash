@@ -1,0 +1,178 @@
+#!/bin/bash --posix
+
+##
+##  Goal:   semi-automate system configuration of user ids and groups
+##
+##  Use:    source sysconf-user
+##
+##  NB:     The caller must source functions etc à la sysconf script.
+##
+
+# do it
+
+function userConf
+{
+    case "$1" in
+      (15 | user)
+        listOptions 15 user;
+        quit;
+        ;;
+
+      (15.1 | userConf)
+        step="15.1 userConf";
+        note "Backup and patch adduser.conf ...";
+
+        DoOrDie CopyToKeep /etc/adduser.conf;
+        DoOrDie ApplyPatch /etc/adduser.conf;
+        ;;
+
+      (15.2 | userGroups)
+        step="15.2 userGroups";
+        note "Create and destroy groups ...";
+
+        DoOrDie SaveCurrent /etc/group;
+
+        fgrep -q "${USER}:" /etc/group && DoOrDie sudo delgroup "${USER}";
+        fgrep -q "work:" /etc/group || DoOrDie sudo addgroup work;
+        fgrep -q "philately:" /etc/group || DoOrDie sudo addgroup philately;
+
+        echo "... adjust group membership for default user ...";
+        delUserFromGroups "${USER}" bluetooth dip plugdev scanner;
+
+        source /etc/adduser.conf;
+        addUserToGroups "${USER}" adm ${EXTRA_GROUPS};
+
+        DoOrDie SaveCurrent /etc/group;
+        ;;
+
+      (15.3 | userAdd)
+        step="15.3 userAdd";
+        note "Create additional users ...";
+
+        DoOrDie SaveCurrent /etc/{group,passwd};
+
+        if fgrep -q QEMU /proc/cpuinfo; then
+            local hostMachine="qemu";
+        else
+            local hostMachine=$(uname -m);
+        fi
+
+        case "${hostMachine}" in
+          (x86_64)
+            DoOrDie sudo adduser pbr     --uid 1001;
+            DoOrDie sudo adduser ber     --uid 1002;
+            DoOrDie sudo adduser telly   --uid 1003;
+            DoOrDie sudo adduser work    --uid 1004;
+            DoOrDie sudo adduser mozilla --uid 1005 --disabled-login;
+            ;;
+          (i686)
+            DoOrDie sudo adduser pbr     --uid 1001;
+            DoOrDie sudo adduser ber     --uid 1002;
+            DoOrDie sudo adduser telly   --uid 1003 --disabled-login;
+            DoOrDie sudo adduser work    --uid 1004 --disabled-login;
+            DoOrDie sudo adduser mozilla --uid 1005 --disabled-login;
+            ;;
+          (qemu)
+            DoOrDie sudo adduser pbr     --uid 1001 --disabled-login;
+            DoOrDie sudo adduser ber     --uid 1002 --disabled-login;
+            DoOrDie sudo adduser telly   --uid 1003 --disabled-login;
+            DoOrDie sudo adduser work    --uid 1004;
+            DoOrDie sudo adduser mozilla --uid 1005 --disabled-login;
+            ;;
+          (*)
+            error "Processor \"${hostMachine}\" not recognised";
+            exit 1;
+            ;;
+        esac
+
+        DoOrDie SaveCurrent /etc/{group,passwd};
+        ;;
+
+      (15.4 | userMozilla)
+        step="15.4 userMozilla";
+        note "Populate /home/mozilla for Mozilla applications ...";
+
+        DoOrDie sudo rm -fr /home/mozilla/*;
+        DoOrDie sudo chmod g+w /home/mozilla/;
+
+        local app;
+        for app in firefox thunderbird; do
+            DoOrDie mkdir -p "/home/mozilla/${app}";
+            DoOrDie sudo cp -pR "${installShare}/usrconf/${app}/profile" "/home/mozilla/${app}";
+        done
+        ;;
+
+      (15.5 | userSudoers)
+        step="15.5 userSudoers";
+        note "Install sudoers files allowing specials privileges ...";
+
+        DoOrDie InstallOurOwn /etc/sudoers.d/backup;
+        ;;
+
+      (15.6 | userMozillaExtensions)
+        step="15.6 userMozillaExtensions";
+        note "Update Mozilla extensions, adblockplus and plug-ins ...";
+
+        local app;
+        for app in firefox thunderbird; do
+            DoOrDie rsync -ax --delete "/media/share/linux/usrconf/${app}/profile" "/home/mozilla/${app}";
+            if [[ -d "/media/share/linux/usrconf/${app}/${HOSTNAME}" ]]; then
+                DoOrDie rsync -ax "/media/share/linux/usrconf/${app}/${HOSTNAME}/*" "/home/mozilla/${app}/profile";
+            fi
+        done
+        ;;
+
+      (15.6.M | userMasterExtensions)
+        step="15.6.M userMasterExtensions";
+        note "Update master Mozilla profile (extensions, adblockplus etc.) ...";
+
+        local app;
+        for app in firefox thunderbird; do
+            DoOrDie sudo chmod -R g+r "/home/mozilla/${app}/profile";
+            DoOrDieLocal touchdir -r "/home/mozilla/${app}/profile";
+            DoOrDie rsync -ax --delete "/home/mozilla/${app}/profile" "/media/share/linux/usrconf/${app}";
+        done
+        ;;
+
+      (15.99)
+        step="15.99 sanityCheck";
+        note "Checking user ...";
+        ListLoggedSteps ${1%.*} | while read step name status; do
+            echo -e $step $name $status;
+            case "$step $name" in
+              ("15.1 userConf")
+                status="\e[31mFIXME\e[0m"
+                CheckOriginal /etc/adduser.conf;
+                CheckPatch /etc/adduser.conf;
+                ;;
+              ("15.2 userGroups")
+                CheckCurrent /etc/{group,passwd};
+                ;;
+              ("15.3 userAdd")
+                CheckCurrent /etc/{group,passwd};
+                ;;
+              ("15.4 userMozilla")
+                ;;
+              ("15.5 userSudoers")
+                CheckOurOwn --sudo /etc/sudoers.d/backup;
+                ;;
+              ("15.6 userMozillaExtensions")
+                ;;
+              ("15.6.M userMasterExtensions")
+                ;;
+            esac
+        done
+        quit;
+        ;;
+
+      (*)
+        badOption "$1";
+        listOptions 15 user;
+        quit 1;
+        ;;
+    esac
+}
+
+### Local Variables: ***
+### mode:ksh ***
+### End: ***
