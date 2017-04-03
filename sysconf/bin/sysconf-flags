@@ -32,7 +32,11 @@ case "$1" in
     ;;
 
   (-l | --log)
-    cat "${logFile}";
+    if [[ $# -eq 1 ]]; then
+        cat "${logFile}";
+    else
+        tail -n $2 "${logFile}";
+    fi
     exit;
     ;;
 
