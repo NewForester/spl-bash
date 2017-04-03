@@ -29,7 +29,6 @@ case "$1" in
             printf "%-7s %s\n" "${step}" "${mnemonic}";
         fi
     done | sed -e 1d;
-    exit;
     ;;
 
   (-l | --log)
@@ -40,20 +39,17 @@ case "$1" in
   (-c | --check)
     if [[ $# -eq 1 ]]; then
         tail -n 1 "${logFile}";
-        exit;
+    else
+        $0 $($0 -s | awk "/^$2 /{ print \$1 } / $2/{ print \$1 }").99;
     fi
-    $0 $($0 -s | awk "/^$2 /{ print \$1 } / $2/{ print \$1 }").99;
-    exit;
     ;;
 
   (-c | --current)
     tail -n 1 "${logFile}";
-    exit;
     ;;
 
   (-e | --erase)
     sed -i "${logFile}" -e '$d';
-    exit;
     ;;
 
   (-n | --next)
@@ -80,8 +76,6 @@ case "$1" in
         fi | head -n 5;
     fi
     rm -f /tmp/${0##*/}.$$;
-
-    exit;
     ;;
 
   (-r | --refresh)
