@@ -54,17 +54,17 @@ function udevConf
       (7.99)
         step="7.99 sanityCheck";
         note "Checking udev ...";
-        ListLoggedSteps ${1%.*} | while read step name status; do
-            echo -e $step $name $status
-            case "$step $name" in
-              ("7.1 udevPersistent")
+        listLoggedSteps ${1%.*} | while read step name status; do
+            printf "%-7s %-23s %s\n" $step $name $status;
+            case "$installDist $name" in
+              (*udevPersistent)
                 CheckOriginal /etc/udev/rules.d/70-persistent-net.rules;
                 CheckOriginal --opt /etc/udev/rules.d/70-persistent-cd.rules;
                 ;;
-              ("7.2 udevTouchpad")
+              (*udevTouchpad)
                 CheckOurOwn /etc/udev/rules.d/80-touchpad.rules;
                 ;;
-              ("7.3 udevPassthrough")
+              (*udevPassthrough)
                 CheckOurOwn /etc/udev/rules.d/85-usbkvm.rules;
                 ;;
             esac

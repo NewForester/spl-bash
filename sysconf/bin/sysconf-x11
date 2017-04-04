@@ -87,30 +87,30 @@ function x11Conf
       (6.99)
         step="6.99 sanityCheck";
         note "Checking x11 ...";
-        ListLoggedSteps ${1%.*} | while read step name status; do
-            echo -e $step $name $status
-            case "$step $name" in
-              ("6.1 x11Keyboard")
+        listLoggedSteps ${1%.*} | while read step name status; do
+            printf "%-7s %-23s %s\n" $step $name $status;
+            case "$installDist $name" in
+              (*x11Keyboard)
                 CheckOriginal /etc/default/keyboard;
                 CheckPatch /etc/default/keyboard;
                 ;;
-              ("6.2 x11Touchpad")
+              (*x11Touchpad)
                 CheckOurOwn /etc/X11/xorg.conf.d/80-touchpad.conf;
                 CheckOurOwn /etc/X11/Xsession.d/80touchpad;
                 ;;
-              ("6.3.H x11Mouse")
+              (*x11Mouse)
                 CheckOurOwn /etc/X11/xorg.conf.d/85-left-hand-mouse.conf;
                 ;;
-              ("6.4.D x11Dell")
+              (*x11Dell)
                 CheckOurOwn /etc/X11/xorg.conf.d/98-dell_p1110.conf;
                 ;;
-              ("6.4.H x11Hanns")
+              (*x11Hanns)
                 CheckOurOwn /etc/X11/xorg.conf.d/98-hh251d.conf;
                 ;;
-              ("6.5 x11Vesa")
+              (*x11Vesa)
                 CheckOurOwn /etc/X11/xorg.conf.d/10-vesa.conf;
                 ;;
-              ("6.6 x11Xinerama")
+              (*x11Xinerama)
                 CheckOurOwn /etc/X11/xorg.conf.d/90-xinerama.conf;
                 ;;
             esac

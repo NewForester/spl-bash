@@ -96,10 +96,10 @@ function mailConf
       (19.99)
         step="19.99 sanityCheck";
         note "Checking mail ...";
-        ListLoggedSteps ${1%.*} | while read step name status; do
-            echo -e $step $name $status;
-            case "$step $name" in
-              ("19.2 mailConfigure")
+        listLoggedSteps ${1%.*} | while read step name status; do
+            printf "%-7s %-23s %s\n" $step $name $status;
+            case "$installDist $name" in
+              (*maiConfigure)
                 CheckOurOwn /etc/dovecot/local.conf;
                 CheckOriginal /etc/exim4/conf.d/transport/37_exim4-config_dovecot_delivery;
                 CheckOurOwn /etc/exim4/conf.d/transport/37_exim4-config_dovecot_delivery;
@@ -108,7 +108,7 @@ function mailConf
                 CheckOriginal /etc/aliases;
                 CheckPatch /etc/aliases;
                 ;;
-              ("19.3 mailSatellite")
+              (*mailSatellite)
                 CheckOriginal /etc/exim4/update-exim4.conf.conf;
                 CheckDeployed /etc/exim4/update-exim4.conf.conf;
                 CheckOriginal /etc/aliases;

@@ -188,10 +188,10 @@ function netConf
       (10.99)
         step="10.99 sanityCheck";
         note "Checking net ...";
-        ListLoggedSteps ${1%.*} | while read step name status; do
-            echo -e $step $name $status
-            case "$step $name" in
-              ("10.1.D netWicdDesktop" | "10.1.L netWicdLaptop")
+        listLoggedSteps ${1%.*} | while read step name status; do
+            printf "%-7s %-23s %s\n" $step $name $status;
+            case "$installDist $name" in
+              (*netWicdDesktop | *netWicdLaptop)
                 CheckOriginal --sudo /etc/wicd/*-settings.conf;
                 local file;
                 for file in $(ls /etc/wicd/*-settings.conf 2> /dev/null); do
@@ -202,11 +202,11 @@ function netConf
                     fi
                 done
                 ;;
-              ("10.2 netNetworkManager")
+              (*netNetworkManager)
                 CheckOriginal /etc/network/interfaces;
                 CheckOurOwn /etc/default/NetworkManager;
                 ;;
-              ("10.6 netInterfaces")
+              (*netInterfaces)
                 CheckOurOwn /etc/network/interfaces;
                 while read junk file; do
                     [[ "${junk}" != "source" ]] && continue;

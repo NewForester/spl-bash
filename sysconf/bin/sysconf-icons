@@ -64,17 +64,17 @@ function iconsConf
       (30.99)
         step="30.99 sanityCheck";
         note "Checking icons ...";
-        ListLoggedSteps ${1%.*} | while read step name status; do
-            echo -e $step $name $status;
-            case "$step $name" in
-              ("30.1 iconsMythtv")
+        listLoggedSteps ${1%.*} | while read step name status; do
+            printf "%-7s %-23s %s\n" $step $name $status;
+            case "$installDist $name" in
+              (*iconsMythtv)
                 CheckOurOwn /usr/share/applications/mythtv.desktop;
                 CheckOurOwn --opt /usr/share/applications/mythtv-setup.desktop;
                 ;;
-              ("30.2 iconsEclipse")
+              (*iconsEclipse)
                 CheckOurOwn /usr/share/applications/eclipse.desktop;
                 ;;
-              ("30.3 iconsWindows")
+              (*iconsWindows)
                 CheckOurOwn /usr/share/applications/wpoX3.desktop;
                 ;;
             esac

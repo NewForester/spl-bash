@@ -163,8 +163,13 @@ function appsConf
       (20.99)
         step="20.99 sanityCheck";
         note "Checking apps ...";
-        ListLoggedSteps ${1%.*} | while read step name status; do
-            echo -e $step $name $status;
+        listLoggedSteps ${1%.*} | while read step name status; do
+            printf "%-7s %-23s %s\n" $step $name $status;
+            case "$installDist $name" in
+              (*app*)
+                CheckCurrent /etc/{passwd,group};
+                ;;
+            esac
         done
         quit;
         ;;

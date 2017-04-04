@@ -137,28 +137,23 @@ function userConf
       (15.99)
         step="15.99 sanityCheck";
         note "Checking user ...";
-        ListLoggedSteps ${1%.*} | while read step name status; do
-            echo -e $step $name $status;
-            case "$step $name" in
-              ("15.1 userConf")
-                status="\e[31mFIXME\e[0m"
+        listLoggedSteps ${1%.*} | while read step name status; do
+            printf "%-7s %-23s %s\n" $step $name $status;
+            case "$installDist $name" in
+              (*userConf)
+                status="\e[31mFIXME\e[0m";
                 CheckOriginal /etc/adduser.conf;
                 CheckPatch /etc/adduser.conf;
                 ;;
-              ("15.2 userGroups")
+              (*userGroups)
                 CheckCurrent /etc/{group,passwd};
                 ;;
-              ("15.3 userAdd")
+              (*userAdd)
                 CheckCurrent /etc/{group,passwd};
+                grep 'x:10..:100:' /etc/passwd;
                 ;;
-              ("15.4 userMozilla")
-                ;;
-              ("15.5 userSudoers")
+              (*userSudoers)
                 CheckOurOwn --sudo /etc/sudoers.d/backup;
-                ;;
-              ("15.6 userMozillaExtensions")
-                ;;
-              ("15.6.M userMasterExtensions")
                 ;;
             esac
         done

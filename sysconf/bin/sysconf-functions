@@ -5,16 +5,14 @@
 ##
 ##  Use:    source sysconf-functions
 ##
-##  Trivial Functions:
+##  Boiler plate functions
 ##
-##      error       - print diagnostic message
-##      note        - print diagnostic message
-##      badOption   - print diagnostic message
-##      listOptions - list the steps in the current section
-##
-##  Recursive function (no longer used recursively):
-##
-##      listSteps   - by introspection of the script source file
+##      error           - print diagnostic message
+##      note            - print diagnostic message
+##      badOption       - print diagnostic message
+##      listOptions     - list the steps in the current section
+##      listSteps       - by inspection of source file
+##      listLoggedSteps - by inspection of the log file
 ##
 ##  Helper functions:
 ##
@@ -77,11 +75,6 @@ function listOptions
     listSteps "${installBin}/${0##*/}-$2" | fgrep "$1.";
 }
 
-function ListLoggedSteps
-{
-    sed -e "s/  */ /g" -e "s/^[^ ]* [^ ]* $1\./$1./" -e "/^$1\./!d" ${logFile} | sort -u;
-}
-
 # recursive function
 
 function listSteps
@@ -102,6 +95,11 @@ function listSteps
             printf "%-7s %-23s %s\n" "${step}" "${mnemonic}" "${text}";
         fi
     done;
+}
+
+function listLoggedSteps
+{
+    sed -e "s/  */ /g" -e "s/^[^ ]* [^ ]* $1\./$1./" -e "/^$1\./!d" "${logFile}" | sort -u;
 }
 
 # Helper functions

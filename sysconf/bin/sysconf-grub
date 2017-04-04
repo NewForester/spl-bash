@@ -62,17 +62,17 @@ function grubConf
       (2.99)
         step="2.99 sanityCheck";
         note "Checking grub ...";
-        ListLoggedSteps ${1%.*} | while read step name status; do
-            echo -e $step $name $status;
-            case "$step $name" in
-              ("2.1 grubWithoutUsb")
+        listLoggedSteps ${1%.*} | while read step name status; do
+            printf "%-7s %-23s %s\n" $step $name $status;
+            case "$installDist $name" in
+              (*grubWithoutUsb)
                 CheckOriginal --nousb "${cfg}" "${map}";
                 ;;
-              ("2.2 grubNoProbe")
+              (*grubNoProbe)
                 CheckOriginal /etc/grub.d/30_os-prober;
                 CheckOurOwn /etc/grub.d/30_os-prober;
                 ;;
-              ("2.3 grubNoAcpi")
+              (*grubNoAcpi)
                 CheckOriginal /etc/default/grub;
                 CheckPatch /etc/default/grub;
                 CheckOriginal --noacpi "${cfg}";

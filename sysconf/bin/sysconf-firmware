@@ -79,13 +79,13 @@ function firmwareConf
       (3.99)
         step="3.99 sanityCheck";
         note "Checking firmware ...";
-        ListLoggedSteps ${1%.*} | while read step name status; do
-            echo -e $step $name $status
+        listLoggedSteps ${1%.*} | while read step name status; do
+            printf "%-7s %-23s %s\n" $step $name $status;
             case "$step $name" in
-              ("3.1 firmwareNetgear")
+              (*firmwareNetgear)
                 CheckOurOwn /etc/pm/sleep.d/75-prism;
                 ;;
-              ("3.7 firmwareLblink")
+              (*firmwareLblink)
                 CheckOurOwn /etc/pm/sleep.d/75-rtlwifi;
                 ;;
             esac

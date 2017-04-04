@@ -326,10 +326,10 @@ EOF
       (27.99)
         step="27.99 sanityCheck";
         note "Checking trac ...";
-        ListLoggedSteps ${1%.*} | while read step name status; do
-            echo -e $step $name $status;
-            case "$step $name" in
-              ("27.2 tracConfigure")
+        listLoggedSteps ${1%.*} | while read step name status; do
+            printf "%-7s %-23s %s\n" $step $name $status;
+            case "$installDist $name" in
+              (*tracConfigure)
                 CheckOurOwn /etc/init.d/trac;
                 CheckCurrent /etc/{group,passwd};
                 ;;

@@ -50,20 +50,20 @@ function loginConf
       (16.99)
         step="16.99 sanityCheck";
         note "Checking login ...";
-        ListLoggedSteps ${1%.*} | while read step name status; do
-            echo -e $step $name $status;
-            case "$step $name" in
-              ("16.1 loginNoGuest")
+        listLoggedSteps ${1%.*} | while read step name status; do
+            printf "%-7s %-23s %s\n" $step $name $status;
+            case "$installDist $name" in
+              (*loginNoGuest)
                 CheckOriginal /etc/lightdm/lightdm.conf;
                 CheckPatch /etc/lightdm/lightdm.conf;
                 ;;
-              ("16.X loginXfce")
+              (*loginXfce)
                 CheckOurOwn --sudo /etc/x11vnc.pass
                 CheckOurOwn /etc/lightdm/setup.custards;
                 CheckOriginal /etc/lightdm/lightdm.conf;
                 CheckPatch /etc/lightdm/lightdm.conf;
                 ;;
-              ("16.K loginKde")
+              (*loginKde)
                 CheckOurOwn /etc/default/kdm.d/20_desktop-custards;
                 CheckOriginal /etc/kde4/kdm/{backgroundrc,kdmrc,Xaccess};
                 CheckPatch /etc/kde4/kdm/{backgroundrc,kdmrc,Xaccess};

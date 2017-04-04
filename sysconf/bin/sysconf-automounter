@@ -65,10 +65,10 @@ function automounterConf
       (14.99)
         step="14.99 sanityCheck";
         note "Checking automounter ...";
-        ListLoggedSteps ${1%.*} | while read step name status; do
-            echo -e $step $name $status;
-            case "$step $name" in
-              ("14.2 automounterConfigure")
+        listLoggedSteps ${1%.*} | while read step name status; do
+            printf "%-7s %-23s %s\n" $step $name $status;
+            case "$installDist $name" in
+              (*automounterConfigure)
                 CheckOurOwn /etc/auto.master.d/{net.autofs,automount.logical.volumes,nfs-servers-by-subnet};
                 CheckOurOwn /etc/pm/sleep.d/30-flush-mounts;
                 (cd /etc/auto.master.d && ls -l auto.*);

@@ -219,23 +219,23 @@ function sambaConf
       (13.99)
         step="13.99 sanityCheck";
         note "Checking samba ...";
-        ListLoggedSteps ${1%.*} | while read step name status; do
-            case "$step $name" in
-              ("13.1 sambaInstall")
+        listLoggedSteps ${1%.*} | while read step name status; do
+            printf "%-7s %-23s %s\n" $step $name $status;
+            case "$installDist $name" in
+              (*sambaInstall)
                 ;;
-              ("13.2 sambaConfigure")
+              (*sambaConfigure)
                 CheckOurOwn /etc/samba/lmhosts;
                 CheckMaster /etc/samba/smb.conf.{patch,shares};
                 ;;
-              ("13.3 sambaPasswords")
+              (*sambaPasswords)
                 CheckOriginal --sudo /var/lib/samba/passdb.tdb;
                 CheckOurOwn --sudo /var/lib/samba/passdb.tdb;
                 ;;
-              ("13.4.I sambaConfInstall" | "13.4.U sambaConfUpdate" | "13.4.P sambaConfPatch" | "13.4.S sambaConfShare")
+              (*sambaConfInstall | *sambaConfUpdate | *sambaConfPatch | *sambaConfShare)
                 CheckDeployed /etc/samba/smb.conf;
                 ;;
             esac
-            echo -e $step $name $status;
         done
         quit;
         ;;

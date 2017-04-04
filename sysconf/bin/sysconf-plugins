@@ -28,8 +28,8 @@ function pluginsConf
       (31.99)
         step="31.99 sanityCheck";
         note "Checking plugins ...";
-        ListLoggedSteps ${1%.*} | while read step name status; do
-            echo -e $step $name $status;
+        listLoggedSteps ${1%.*} | while read step name status; do
+            printf "%-7s %-23s %s\n" $step $name $status;
         done
         quit;
         ;;

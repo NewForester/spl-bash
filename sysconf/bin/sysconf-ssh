@@ -124,25 +124,25 @@ function sshConf
       (11.99)
         step="11.99 sanityCheck";
         note "Checking ssh ...";
-        ListLoggedSteps ${1%.*} | while read step name status; do
-            case "$step $name" in
-              ("11.2 sshConfigure")
+        listLoggedSteps ${1%.*} | while read step name status; do
+            printf "%-7s %-23s %s\n" $step $name $status;
+            case "$installDist $name" in
+              (*sshConfigure)
                 CheckOriginal /etc/ssh/{ssh_config,sshd_config};
                 CheckPatch /etc/ssh/{ssh_config,sshd_config};
                 CheckOurOwn /etc/ssh/ssh_known_hosts;
                 CheckOriginal /etc/hosts.allow;
                 CheckDotDir /etc/hosts.allow hosts.allow-ssh;
                 ;;
-              ("11.3 sshKeys")
+              (*sshKeys)
                 CheckOurOwn --sudo /etc/ssh/ssh_host_*key;
                 CheckOurOwn /etc/ssh/ssh_host_*key.pub;
                 ;;
-              ("11.5 rsyncConfigure")
+              (*rsyncConfigure)
                 CheckOriginal /etc/inetd.conf;
                 CheckOurOwn /etc/rsyncd.conf;
                 ;;
             esac
-            echo -e $step $name $status
         done
         quit;
         ;;

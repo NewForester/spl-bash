@@ -179,35 +179,31 @@ function blkdevConf
       (8.99)
         step="8.99 sanityCheck";
         note "Checking blkdev ...";
-        ListLoggedSteps ${1%.*} | while read step name status; do
-            echo -e $step $name $status
-            case "$step $name" in
-              ("8.1 blkdevInstallTools")
+        listLoggedSteps ${1%.*} | while read step name status; do
+            printf "%-7s %-23s %s\n" $step $name $status;
+            case "$installDist $name" in
+              (*blkdevInstallTools)
                 ;;
-              ("8.2 blkdevMedia")
+              (*blkdevMedia)
                 (cd /media && ls -ld fd* cd* dvd* usb*) 2> /dev/null;
                 ;;
-              ("8.3 blkdevOpt" | "8.7 blkdevOpt" | "8.6 blkdevOpt")
+              (*blkdevOpt)
                 ;;
-              ("8.4 blkdevLabels" | "8.3 blkdevLabels" | "8.5.A blkdevLabels")
+              (*blkdevLabels)
                 (cd /dev/disk/by-label && ls -ld root home usr var opt);
                 ;;
-              ("8.5 blkdevSwap" | "8.4 blkdevSwap")
+              (*blkdevSwap)
                 (cd /dev/disk/by-label && ls -ld swap*);
                 ;;
-              ("8.3 blkdevSwap")
-                (cd /dev/disk/by-label && ls -ld root home usr var opt);
-                (cd /dev/disk/by-label && ls -ld swap*);
-                ;;
-              ("8.6 blkdevResume" | "8.5 blkdevResume" | "8.4 blkdevResume")
+              (*blkdevResume)
                 CheckOriginal /etc/initramfs-tools/conf.d/resume;
                 CheckOurOwn /etc/initramfs-tools/conf.d/resume;
                 ;;
-              ("8.7 blkdevFstab" | "8.6 blkdevFstab" | "8.5 blkdevFstab")
+              (*blkdevFstab)
                 CheckOriginal /etc/fstab;
                 CheckDeployed /etc/fstab;
                 ;;
-              ("8.8 blkdevRaid" | "8.7 blkdevRaid")
+              (*blkdevRaid)
                 CheckOriginal /etc/mdadm/mdadm.conf;
                 ;;
             esac

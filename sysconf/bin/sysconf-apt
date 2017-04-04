@@ -98,26 +98,26 @@ function aptConf
       (5.99)
         step="5.99 sanityCheck";
         note "Checking apt ...";
-        ListLoggedSteps ${1%.*} | while read step name status; do
-            echo -e $step $name $status
-            case "$step $name" in
-              ("5.1 aptConfigure")
+        listLoggedSteps ${1%.*} | while read step name status; do
+            printf "%-7s %-23s %s\n" $step $name $status;
+            case "$installDist $name" in
+              (*aptConfigure)
                 CheckOriginal /etc/apt/sources.list;
                 CheckDeployed /etc/apt/sources.list;
                 CheckOriginal --opt /etc/apt/apt.conf;
                 CheckOurOwn /etc/apt/apt.conf.d/90periodic;
                 ;;
-              ("5.2 aptProxy")
+              (*aptProxy)
                 CheckOurOwn /etc/apt/apt.conf.d/80proxy;
                 ;;
-              ("5.4 aptSquidConfigure")
+              (*aptSquidConfigure)
                 CheckOriginal --sudo /etc/squid/squid.conf;
                 CheckPatch --sudo /etc/squid/squid.conf squid.apt;
                 ;;
-              ("5.5 aptMultimedia")
+              (*aptMultimedia)
                 CheckOurOwn /etc/apt/sources.list.d/wheezy-multimedia.list;
                 ;;
-              ("5.6 aptBackports")
+              (*aptBackports)
                 CheckOurOwn /etc/apt/sources.list.d/wheezy-backports.list;
                 ;;
             esac

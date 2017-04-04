@@ -148,18 +148,18 @@ function bootstrapConf
       (1.99)
         step="1.99 sanityCheck";
         note "Checking bootstrap ...";
-        ListLoggedSteps ${1%.*} | while read step name status; do
-            echo -e $step $name $status
-            case "$step $name" in
-              ("1.1 rootPassword")
+        listLoggedSteps ${1%.*} | while read step name status; do
+            printf "%-7s %-23s %s\n" $step $name $status;
+            case "$installDist $name" in
+              (*rootPassword)
                 CheckCurrent /etc/{group,passwd};
                 ;;
-              ("1.5 initialSave")
+              (*initialSave)
                 CheckOriginal /etc/{group,passwd};
                 CheckOriginal /boot/grub/grub.cfg;
                 CheckOriginal --opt /boot/grub/device.map;
                 ;;
-              ("1.6 numlockOn")
+              (*numlockOn)
                 CheckOriginal /etc/kbd/config;
                 CheckPatch /etc/kbd/config;
                 ;;

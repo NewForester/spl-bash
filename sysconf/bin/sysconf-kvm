@@ -91,23 +91,23 @@ function kvmConf
       (21.99)
         step="21.99 sanityCheck";
         note "Checking kvm ...";
-        ListLoggedSteps ${1%.*} | while read step name status; do
-            echo -e $step $name $status;
-            case "$step $name" in
-              ("21.2 kvmSetup")
+        listLoggedSteps ${1%.*} | while read step name status; do
+            printf "%-7s %-23s %s\n" $step $name $status;
+            case "$installDist $name" in
+              (*kvmSetup)
                 CheckOriginal /etc/kvm/kvm-{ifup,ifdown};
                 CheckOurOwn /etc/kvm/kvm-{ifup,ifdown};
                 CheckOurOwn --sudo /etc/sudoers.d/vmif;
                 ;;
-              ("21.4 kvmConfigureVde")
+              (*kvmConfigureVde)
                 CheckOriginal /etc/dnsmasq.conf;
                 CheckPatch /etc/dnsmasq.conf;
                 ;;
-              ("21.6 kvmSetupQemu")
+              (*kvmSetupQemu)
                 CheckOriginal /etc/qemu-ifup;
                 CheckOurOwn /etc/qemu-ifup;
                 ;;
-              ("21.7 kvmWxp")
+              (*kvmWxp)
                 CheckOurOwn /usr/share/applications/wpoX3.desktop;
                 ;;
             esac

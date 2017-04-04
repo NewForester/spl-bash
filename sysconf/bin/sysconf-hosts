@@ -56,17 +56,17 @@ function hostsConf
       (4.99)
         step="4.99 sanityCheck";
         note "Checking hosts ...";
-        ListLoggedSteps ${1%.*} | while read step name status; do
-            echo -e $step $name $status
-            case "$step $name" in
-              ("4.1 hostsConfigure")
+        listLoggedSteps ${1%.*} | while read step name status; do
+            printf "%-7s %-23s %s\n" $step $name $status;
+            case "$installDist $name" in
+              (*hostsConfigure)
                 CheckOurOwn --opt /etc/ethers;
                 CheckOriginal /etc/networks;
                 CheckPatch /etc/networks;
                 CheckOriginal /etc/hosts;
                 CheckDotDir /etc/hosts hosts-local;
                 ;;
-              ("4.2 hostsAccess")
+              (*hostsAccess)
                 CheckOriginal /etc/{hosts.allow,hosts.deny};
                 CheckPatch /etc/{hosts.allow,hosts.deny};
                 ;;

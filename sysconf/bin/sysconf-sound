@@ -49,16 +49,16 @@ function soundConf
       (17.99)
         step="17.99 sanityCheck";
         note "Checking sound ...";
-        ListLoggedSteps ${1%.*} | while read step name status; do
-            echo -e $step $name $status
-            case "$step $name" in
-              ("17.1.S soundAlsaSave")
+        listLoggedSteps ${1%.*} | while read step name status; do
+            printf "%-7s %-23s %s\n" $step $name $status;
+            case "$installDist $name" in
+              (*soundAlsaSave)
                 CheckOriginal /var/lib/alsa/asound.state;
                 ;;
-              ("17.1.R soundAlsaRestore")
+              (*soundAlsaRestore)
                 CheckOurOwn /var/lib/alsa/asound.state;
                 ;;
-              ("17.2 soundModules")
+              (*soundModules)
                 CheckOriginal /etc/modules;
                 CheckPatch /etc/modules;
                 ;;

@@ -37,10 +37,10 @@ function printerConf
       (18.99)
         step="18.99 sanityCheck";
         note "Checking printer ...";
-        ListLoggedSteps ${1%.*} | while read step name status; do
-            echo -e $step $name $status;
-            case "$step $name" in
-              ("18.2 printerSetup")
+        listLoggedSteps ${1%.*} | while read step name status; do
+            printf "%-7s %-23s %s\n" $step $name $status;
+            case "$installDist $name" in
+              (*printerSetup)
                 CheckMaster --sudo --nokeep /etc/cups/printers.conf;
                 ;;
             esac

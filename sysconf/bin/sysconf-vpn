@@ -100,10 +100,10 @@ function vpnConf
       (29.99)
         step="29.99 sanityCheck";
         note "Checking vpn ...";
-        ListLoggedSteps ${1%.*} | while read step name status; do
-            echo -e $step $name $status;
-            case "$step $name" in
-              ("29.2 vpnConfigure")
+        listLoggedSteps ${1%.*} | while read step name status; do
+            printf "%-7s %-23s %s\n" $step $name $status;
+            case "$installDist $name" in
+              (*vpnConfigure)
                 CheckOurOwn /etc/openvpn/ca.crt;
 
                 local vpnhost;
@@ -127,19 +127,19 @@ function vpnConf
                 CheckOurOwn /etc/openvpn/${host}.{conf,crt};
                 CheckOurOwn --sudo /etc/openvpn/${host}.key;
                 ;;
-              ("29.3 vpnNoAutostart")
+              (*vpnNoAutostart)
                 CheckOriginal /etc/default/openvpn;
                 CheckPatch /etc/default/openvpn;
                 ;;
-              ("29.4 vpnHosts")
+              (*vpnHosts)
                 CheckOriginal /etc/hosts;
                 CheckDotDir /etc/hosts hosts-vpn;
                 ;;
-              ("29.5 vpnHostsAllow")
+              (*vpnHostsAllow)
                 CheckOriginal /etc/hosts.allow;
                 CheckDotDir /etc/hosts.allow hosts.allow-{ssh,nfs}-vpn;
                 ;;
-              ("29.10 vpnNexsan")
+              (*vpnNexsan)
                 CheckOurOwn /etc/ppp/peers/{nexsan-pptp,nexsan-sstp};
                 CheckOurOwn /etc/ppp/ip-up.d/nexsan-vpn;
 

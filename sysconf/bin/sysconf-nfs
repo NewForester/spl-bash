@@ -68,20 +68,20 @@ function nfsConf
       (12.99)
         step="12.99 sanityCheck";
         note "Checking nfs ...";
-        ListLoggedSteps ${1%.*} | while read step name status; do
-            echo -e $step $name $status
-            case "$step $name" in
-              ("12.2.C nfsClientConfigure")
+        listLoggedSteps ${1%.*} | while read step name status; do
+            printf "%-7s %-23s %s\n" $step $name $status;
+            case "$installDist $name" in
+              (*nfsClientConfigure)
                 CheckOriginal /etc/default/nfs-common;
                 CheckPatch /etc/default/nfs-common;
                 ;;
-              ("12.2.S nfsServerConfigure")
+              (*nfsServerConfigure)
                 CheckOriginal /etc/default/nfs-kernel-server;
                 CheckPatch /etc/default/nfs-kernel-server;
                 CheckOriginal /etc/hosts.allow;
                 CheckDotDir /etc/hosts.allow hosts.allow-nfs;
                 ;;
-              ("12.3 nfsExports")
+              (*nfsExports)
                 CheckOriginal /etc/exports;
                 CheckPatch /etc/exports;
                 ;;

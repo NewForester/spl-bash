@@ -40,10 +40,10 @@ function avscanConf
       (32.99)
         step="32.99 sanityCheck";
         note "Checking avscan ...";
-        ListLoggedSteps ${1%.*} | while read step name status; do
-            echo -e $step $name $status;
-            case "$step $name" in
-              ("32.2 avscanConfigure")
+        listLoggedSteps ${1%.*} | while read step name status; do
+            printf "%-7s %-23s %s\n" $step $name $status;
+            case "$installDist $name" in
+              (*avscanConfigure)
                 CheckOurOwn /etc/logrotate.d/avscan;
                 CheckOurOwn /etc/avscan/{avscan-fs,avscan-mtab};
                 CheckOriginal /etc/crontab;

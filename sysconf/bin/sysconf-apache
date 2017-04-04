@@ -55,10 +55,10 @@ function apacheConf
       (25.99)
         step="25.99 sanityCheck";
         note "Checking apache ...";
-        ListLoggedSteps ${1%.*} | while read step name status; do
-            echo -e $step $name $status;
-            case "$step $name" in
-              ("25.2 apacheConfigure")
+        listLoggedSteps ${1%.*} | while read step name status; do
+            printf "%-7s %-23s %s\n" $step $name $status;
+            case "$installDist $name" in
+              (*apacheConfigure)
                 CheckCurrent /etc/{group,passwd};
                 ;;
             esac

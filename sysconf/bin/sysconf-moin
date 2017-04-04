@@ -234,30 +234,30 @@ function moinConf
       (26.99)
         step="26.99 sanityCheck";
         note "Checking moin ...";
-        ListLoggedSteps ${1%.*} | while read step name status; do
-            echo -e $step $name $status;
-            case "$step $name" in
-              ("26.2 moinConfigure")
+        listLoggedSteps ${1%.*} | while read step name status; do
+            printf "%-7s %-23s %s\n" $step $name $status;
+            case "$installDist $name" in
+              (*moinConfigure)
                 CheckOurOwn /etc/init.d/moin;
                 CheckCurrent /etc/{group,passwd};
                 ;;
-              ("26.4 moinMyWiki")
+              (*moinMyWiki)
                 CheckOriginal /etc/moin/{mywiki.py,farmconfig.py,wikiserverconfig.py};
                 CheckPatch /etc/moin/{mywiki.py,farmconfig.py,wikiserverconfig.py};
                 ;;
-              ("26.6.T moinTestWiki")
+              (*moinTestWiki)
                 CheckDeployed /etc/moin/test.py;
                 ;;
-              ("26.6.C moinCustardsWiki")
+              (*moinCustardsWiki)
                 CheckDeployed /etc/moin/custards.py;
                 ;;
-              ("26.6.I moinItWiki")
+              (*moinItWiki)
                 CheckDeployed /etc/moin/it.py;
                 ;;
-              ("26.6.P moinPhilWiki")
+              (*moinPhilWiki)
                 CheckDeployed /etc/moin/phil.py;
                 ;;
-              ("26.6.V moinVadatechWiki")
+              (*moinVadatechWiki)
                 CheckDeployed /etc/moin/vadatech.py;
                 ;;
             esac
