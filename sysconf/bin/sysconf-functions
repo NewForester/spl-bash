@@ -34,7 +34,6 @@
 ##
 ##  Workhorse functions:
 ##
-##      MassageFile     - substitute %HOST% with $HOSTNAME etc. (internal)
 ##      Deploy          - deploy file from ~/keep to /etc or where ever
 ##      SaveCurrent     - copy file from /etc/ to ~/keep without release suffix
 ##      CopyToKeep      - copy file from /etc/ to ~/keep and add release suffix
