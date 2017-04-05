@@ -247,11 +247,11 @@ case "$1" in
     grubConf "$@";
     ;;
 
-  (initialSave | bashProfile | installScripts | mountSysconf | rootPassword)
+  (initialSave | bashProfile | installScripts | mountSysconf | sudoersGroup | rootPassword | firstStep)
     ;&
   (1* | bootstrap*)
     source sysconf-bootstrap;
-    bootstrapConf "$@";
+    bootstrapConf 1 "$@";
     ;;
 
   (*)

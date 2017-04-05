@@ -11,7 +11,6 @@
 ##      note            - print diagnostic message
 ##      badOption       - print diagnostic message
 ##      listOptions     - list the steps in the current section
-##      listSteps       - by inspection of source file
 ##      listLoggedSteps - by inspection of the log file
 ##
 ##  Helper functions:
@@ -34,7 +33,7 @@
 ##
 ##  Workhorse functions:
 ##
-##      Deploy          - deploy file from ~/keep to /etc or where ever
+##      Deploy          - deploy file from ~/keep to /etc or where ever via MassageFile
 ##      SaveCurrent     - copy file from /etc/ to ~/keep without release suffix
 ##      CopyToKeep      - copy file from /etc/ to ~/keep and add release suffix
 ##      FetchOurOwn     - fetch our own configuration (patch) file into the ~/keep area
@@ -68,37 +67,26 @@ quit()  { trap '-' EXIT; exit $1; }
 
 badOption()     { error "step \"$1\" not recognised"; }
 
-function listOptions
-{
-    note "Choose from the steps ...";
-    listSteps "${installBin}/${0##*/}-$2" | fgrep "$1.";
-}
-
-# recursive function
-
-function listSteps
-{
-    sed -e '/^        /d' -e '/^ *(.*)$/!d' -e '/(\*)/d' -e 's/[(|)]//g' $1 | while read step mnemonic; do
-        if [[ "${step}" == "n/a" ]]; then
-            continue;
-        fi
-        if [[ "${mnemonic%\*}" != "${mnemonic}" ]]; then
-            path="${installBin}/${0##*/}-${mnemonic%\*}";
-            if [[ -r "${path}" ]]; then
-                listSteps "${path}";
-                continue;
-            fi
-        fi
-        if [[ "${step%.*}" != "${step}" ]]; then
-            text=$(grep -A 1 "${step} ${mnemonic}" $1 | sed -e '/note/!d' -e 's/.*"\(.*\)".*/\1/');
-            printf "%-7s %-23s %s\n" "${step}" "${mnemonic}" "${text}";
-        fi
-    done;
-}
-
 function listLoggedSteps
 {
     sed -e "s/  */ /g" -e "s/^[^ ]* [^ ]* $1\./$1./" -e "/^$1\./!d" "${logFile}" | sort -u;
+}
+
+function listOptions
+{
+    note "Choose from the steps ...";
+
+    sed -e '/($.*)/!d' "${installBin}"/$1 -e 's/|.*|//' -e 's/[(|)]//g' | while read step mnemonic; do
+        step=$(eval echo ${step});
+        if [[ "${step%.*}" == "${step}" ]]; then
+            continue;
+        fi
+
+        if [[ "${step%%.*}" == "$2" || "${mnemonic#$2}" != "${mnemonic}" ]]; then
+            text=$(grep -A 1 "${step} ${mnemonic}" "${installBin}"/$1 | sed -e '/note/!d' -e 's/.*"\(.*\)".*/\1/');
+            printf "%-7s %-23s %s\n" "${step}" "${mnemonic}" "${text}";
+        fi
+    done;
 }
 
 # Helper functions
