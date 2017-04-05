@@ -133,7 +133,7 @@ function sambaConf
 
         installPackage samba-common smbclient samba cifs-utils;
 
-        cp -pf /etc/group keep/etc;
+        DoOrDie SaveCurrent /etc/group;
         ;;
 
       (13.2 | sambaConfigure)
