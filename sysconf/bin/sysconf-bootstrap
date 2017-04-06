@@ -21,7 +21,8 @@ function defineSteps
     firstStep=$major.$minor;
 
     minor=$((minor+1));
-    rootPassword=$major.$minor;
+    rootPassword=$major.$minor.R;
+    sudoersGroup=$major.$minor.S;
 
     minor=$((minor+1));
     mountSysconf=$major.$minor;
@@ -63,7 +64,12 @@ function bootstrapConf
             cp -pf /etc/group /etc/passwd keep/etc/ || exit 1;
 
             printf "%-23s %-7s %-23s\n" "$(date +"%x %X")" 1.1 firstStep >> keep/sysconf;
-            echo "... do step $rootPassword (rootPassword) next";
+
+            if sudo pwd; then
+                echo "... do step $rootPassword (rootPassword) next";
+            else
+                echo "... do step $sudoersGroup (sudoersGroup) next";
+            fi
         )
         ;;
 
@@ -71,15 +77,40 @@ function bootstrapConf
         error "Do this step by-hand";
         quit 1;
 
-        note "Set root password ...";
+        note "Set root password using sudo ...";
         (
+            echo "... set root password";
             sudo passwd root || exit 1;
 
             echo "... change default group";
             sudo usermod -g users "${USER}" || exit 1;
 
-            printf "%-23s %-7s %-23s\n" "$(date +"%x %X")" 1.2 rootPassword >> keep/sysconf;
-            echo "... logout and back in again - continue with step mountSysconf";
+            printf "%-23s %-7s %-23s\n" "$(date +"%x %X")" 1.2.R rootPassword >> keep/sysconf;
+            echo "... logout and back in again then continue with step mountSysconf";
+        )
+        ;;
+
+      ($sudoersGroup | sudoersGroup)
+        error "Do this step by-hand";
+        quit 1;
+
+        note "Add ${USER} to sudoers group using su ...";
+        (
+            echo "... add ${USER} to sudoers group";
+            su -c "
+                if fgrep -q "%sudo" /etc/sudoers; then
+                    addgroup ${USER} sudo;
+                elif fgrep -q "%wheel" /etc/sudoers; then
+                    addgroup ${USER} wheel;
+                else
+                    echo '... no sudo or wheel group in /etc/sudoers';
+                fi" || exit 1;
+
+            echo "... change default group";
+            su -c "usermod -g users ${USER}" || exit 1;
+
+            printf "%-23s %-7s %-23s\n" "$(date +"%x %X")" 1.2.S sudoersGroup >> keep/sysconf;
+            echo "... logout and back in again then continue with step mountSysconf";
         )
         ;;
 
