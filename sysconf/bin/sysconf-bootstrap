@@ -12,17 +12,42 @@
 ##  be executed in a semi-automatic fashion.
 ##
 
-# do it
+function defineSteps
+{
+    local major="$1"; shift;
+    local minor=0;
+
+    minor=$((minor+1));
+    rootPassword=$major.$minor;
+
+    minor=$((minor+1));
+    mountSysconf=$major.$minor;
+
+    minor=$((minor+1));
+    installScripts=$major.$minor;
+
+    minor=$((minor+1));
+    bashProfile=$major.$minor;
+
+    minor=$((minor+1));
+    initialSave=$major.$minor;
+
+    minor=$((minor+1));
+    numlockOn=$major.$minor;
+}
 
 function bootstrapConf
 {
+    local major="$1"; shift;
+    defineSteps $major;
+
     case "$1" in
-      (1 | bootstrap)
-        listOptions 1 bootstrap;
+      ($major | bootstrap)
+        listOptions sysconf-bootstrap "$1";
         quit;
         ;;
 
-      (1.1 | rootPassword)
+      ($rootPassword | rootPassword)
         error "Do this step by-hand";
         quit 1;
 
@@ -41,11 +66,11 @@ function bootstrapConf
             sudo usermod -g users "${USER}" || exit 1;
 
             printf "%-23s %-7s %-23s\n" "$(date +"%x %X")" 1.1 rootPassword >> keep/sysconf;
-            echo "... logout and back in again - continue with step 1.2 (mountSysconf)";
+            echo "... logout and back in again - continue with step mountSysconf";
         )
         ;;
 
-      (1.2 | mountSysconf)
+      ($mountSysconf | mountSysconf)
         error "Do this step by-hand";
         quit 1;
 
@@ -63,14 +88,14 @@ function bootstrapConf
 
             echo "... mount the installation share";
             sudo mkdir -p /media/share/linux || exit 1;
-            sudo mount "${NFS_HOST}:/export/share/linux" /media/share/linux || exit 1;
+            sudo mount ${NFS_HOST}:/export/share/linux /media/share/linux || exit 1;
 
             printf "%-23s %-7s %-23s\n" "$(date +"%x %X")" 1.2 mountSysconf >> keep/sysconf;
             echo "... done";
         )
         ;;
 
-      (1.3 | installScripts)
+      ($installScripts | installScripts)
         error "Do this step by-hand";
         quit 1;
 
@@ -93,8 +118,8 @@ function bootstrapConf
         )
         ;;
 
-      (1.4 | bashProfile)
-        step="1.4 bashProfile";
+      ($bashProfile | bashProfile)
+        step="$bashProfile bashProfile";
         note "Configure bash profiles ...";
 
         DoOrDie mkdir -p keep/bash;
@@ -114,8 +139,8 @@ function bootstrapConf
         fini="logout and back in again";
         ;;
 
-      (1.5 | initialSave)
-        step="1.5 initialSave";
+      ($initialSave | initialSave)
+        step="$initialSave initialSave";
         note "Initial save of files ...";
 
         echo "... save passwd and group files (properly)";
@@ -137,18 +162,18 @@ function bootstrapConf
         fi
         ;;
 
-      (1.6 | numlockOn)
-        step="1.6 numlockOn";
+      ($numlockOn | numlockOn)
+        step="$numlockOn numlockOn";
         note "Configure the console keyboard ...";
 
         DoOrDie CopyToKeep /etc/kbd/config;
         DoOrDie ApplyPatch /etc/kbd/config;
         ;;
 
-      (1.99)
-        step="1.99 sanityCheck";
+      ($major.99)
+        step="$major.99 sanityCheck";
         note "Checking bootstrap ...";
-        listLoggedSteps ${1%.*} | while read step name status; do
+        listLoggedSteps $major | while read step name status; do
             printf "%-7s %-23s %s\n" $step $name $status;
             case "$installDist $name" in
               (*rootPassword)
@@ -170,7 +195,7 @@ function bootstrapConf
 
       (*)
         badOption "$1";
-        listOptions 1 bootstrap;
+        listOptions sysconf-bootstrap $major;
         quit 1;
         ;;
     esac
