@@ -7,7 +7,7 @@
 ##
 ##  NB:     The caller must source functions etc à la sysconf script.
 ##
-##  The first three steps must be executed by-hand (copy/paste in to a console)
+##  The first few steps must be executed by-hand (copy/paste in to a console)
 ##  to set up an environment in which the rest of the system configuration can
 ##  be executed in a semi-automatic fashion.
 ##
@@ -16,6 +16,9 @@ function defineSteps
 {
     local major="$1"; shift;
     local minor=0;
+
+    minor=$((minor+1));
+    firstStep=$major.$minor;
 
     minor=$((minor+1));
     rootPassword=$major.$minor;
@@ -47,11 +50,11 @@ function bootstrapConf
         quit;
         ;;
 
-      ($rootPassword | rootPassword)
+      ($firstStep | firstStep)
         error "Do this step by-hand";
         quit 1;
 
-        note "Set root password ...";
+        note "First step ...";
         (
             echo "... create subdirectories in ${HOME}";
             umask 0002 && cd && mkdir -p keep/etc || exit 1;
@@ -59,13 +62,23 @@ function bootstrapConf
             echo "... save passwd and group files (quickly)";
             cp -pf /etc/group /etc/passwd keep/etc/ || exit 1;
 
-            echo "... set root password";
+            printf "%-23s %-7s %-23s\n" "$(date +"%x %X")" 1.1 firstStep >> keep/sysconf;
+            echo "... do step $rootPassword (rootPassword) next";
+        )
+        ;;
+
+      ($rootPassword | rootPassword)
+        error "Do this step by-hand";
+        quit 1;
+
+        note "Set root password ...";
+        (
             sudo passwd root || exit 1;
 
             echo "... change default group";
             sudo usermod -g users "${USER}" || exit 1;
 
-            printf "%-23s %-7s %-23s\n" "$(date +"%x %X")" 1.1 rootPassword >> keep/sysconf;
+            printf "%-23s %-7s %-23s\n" "$(date +"%x %X")" 1.2 rootPassword >> keep/sysconf;
             echo "... logout and back in again - continue with step mountSysconf";
         )
         ;;
@@ -90,7 +103,7 @@ function bootstrapConf
             sudo mkdir -p /media/share/linux || exit 1;
             sudo mount ${NFS_HOST}:/export/share/linux /media/share/linux || exit 1;
 
-            printf "%-23s %-7s %-23s\n" "$(date +"%x %X")" 1.2 mountSysconf >> keep/sysconf;
+            printf "%-23s %-7s %-23s\n" "$(date +"%x %X")" 1.3 mountSysconf >> keep/sysconf;
             echo "... done";
         )
         ;;
@@ -113,7 +126,7 @@ function bootstrapConf
             echo "... install administration script in ${HOME}/bin";
             cp -pdfL "${installShare}/bin/bin.adm/"*[^~] bin || exit 1;
 
-            printf "%-23s %-7s %-23s\n" "$(date +"%x %X")" 1.3 installScripts >> keep/sysconf;
+            printf "%-23s %-7s %-23s\n" "$(date +"%x %X")" 1.4 installScripts >> keep/sysconf;
             echo "... now run: bin/sysconf bashProfile";
         )
         ;;
