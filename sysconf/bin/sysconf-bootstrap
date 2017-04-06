@@ -120,6 +120,15 @@ function bootstrapConf
 
         note "Mount sysconf install share ...";
         (
+            if [[ ! -r /etc/sysconf-env ]]; then
+                error() { echo -e "\e[35m${0##*/}: \e[31m$@\e[0m"; }
+                error "/etc/sysconf-env missing";
+                exit 1;
+            fi
+
+            echo "... source install environment";
+            source /etc/sysconf-env || exit 1;
+
             echo "... create subdirectories in ${HOME}";
             umask 0002 && cd && mkdir -p keep/dpkg || exit 1;
 
@@ -131,8 +140,8 @@ function bootstrapConf
             sudo apt-get install nfs-common || exit 1;
 
             echo "... mount the installation share";
-            sudo mkdir -p /media/share/linux || exit 1;
-            sudo mount ${NFS_HOST}:/export/share/linux /media/share/linux || exit 1;
+            sudo mkdir -p "${installShare}" || exit 1;
+            sudo mount "${installHost}:${installShare/media/export}" "${installShare}" || exit 1;
 
             printf "%-23s %-7s %-23s\n" "$(date +"%x %X")" 1.3 mountSysconf >> keep/sysconf;
             echo "... done";
@@ -145,6 +154,20 @@ function bootstrapConf
 
         note "Install shell scripts ...";
         (
+            if [[ ! -r /etc/sysconf-env ]]; then
+                error() { echo -e "\e[35m${0##*/}: \e[31m$@\e[0m"; }
+                error "/etc/sysconf-env missing";
+                exit 1;
+            fi
+
+            echo "... source install environment";
+            source /etc/sysconf-env || exit 1;
+
+            echo "... mount the Python share";
+            pythonShare="${installShare/linux/python}";
+            sudo mkdir -p "${pythonShare}" || exit 1;
+            sudo mount "${installHost}:${pythonShare/media/export}" "${pythonShare}" || exit 1;
+
             echo "... create subdirectories in ${HOME}";
             umask 0002 && cd && mkdir -p bin tmp || exit 1;
 
@@ -186,6 +209,11 @@ function bootstrapConf
       ($initialSave | initialSave)
         step="$initialSave initialSave";
         note "Initial save of files ...";
+
+        if [[ -z "${RELEASE}" ]]; then
+            error '${RELEASE} is not defined';
+            quit 1;
+        fi
 
         echo "... save passwd and group files (properly)";
         local file;
