@@ -14,13 +14,19 @@ function defineSteps
     local minor=0;
 
     minor=$((minor+1));
-    grubWithoutUsb=$major.$minor;
+    grubNoUuid=$major.$minor;
 
     minor=$((minor+1));
-    grubNoProbe=$major.$minor;
+    grubDualDisk=$major.$minor;
 
-    minor=$((minor+1));
-    grubNoAcpi=$major.$minor;
+#     minor=$((minor+1));
+#     grubWithoutUsb=$major.$minor;
+#
+#     minor=$((minor+1));
+#     grubNoProbe=$major.$minor;
+#
+#     minor=$((minor+1));
+#     grubNoAcpi=$major.$minor;
 }
 
 function grubConf
@@ -37,43 +43,73 @@ function grubConf
         quit;
         ;;
 
-      ($grubWithoutUsb | grubWithoutUsb)
-        step="$grubWithoutUsb grubWithoutUsb";
-        note "Regenerate grub boot list without the USB ...";
+       ($grubNoUuid | grubNoUuid)
+        step="$grubNoUuid grubNoUuid";
+        note "Regenerate grub boot configuration without UUID ...";
 
-        DoOrDie sudo rm -f "${map}";
-        DoOrDie sudo update-grub;
+        local save="/boot/grub/grub-$(date +'%y-%m-%d').cfg";
 
-        local file;
-        for file in "${cfg}" "${map}"; do
-            if [[ -e ${file} ]]; then
-                DoOrDie cp -pf "${file}" "keep${file}.nousb";
-            fi
-        done
+        DoOrDie SaveCurrent /boot/grub/grub.cfg;
+
+        DoOrDie cp -pf keep/boot/grub/grub.cfg "keep/${save}";
+        DoOrDie sed -i keep/boot/grub/grub.cfg -e "'/--set=root/s/search/true # &/'";
+
+        DoOrDie Deploy /boot/grub/grub.cfg "${save}";
         ;;
 
-      ($grubNoProbe | grubNoProbe)
-        step="$grubNoProbe grubNoProbe";
-        note "Regenerate grub boot list without hard drive ...";
+      ($grubDualDisk | grubDualDisk)
+        step="$grubDualDisk grubDualDisk";
+        note "Copy /boot to second disk ...";
 
-        DoOrDie CopyToKeep /etc/grub.d/30_os-prober;
-        DoOrDie InstallOurOwn /etc/grub.d/30_os-prober;
+        local boot=$(df | sed -e '/\/boot/!d' -e 's/ .*//');
 
-        DoOrDie sudo rm "${map}";
-        DoOrDie sudo update-grub;
+        if [[ "${boot}" != "/dev/sda8" ]]; then
+            echo "Unexpected boot device ${boota}: is not /dev/sda8";
+            exit 1;
+        fi
+
+        DoOrDie sudo mount /dev/sdb8 /mnt;
+        DoOrDie sudo cp -a /boot/* /mnt/;
+        DoOrDie sudo umount /mnt;
         ;;
 
-      ($grubNoAcpi | grubNoAcpi)
-        step="$grubNoAcpi grubNoAcpi";
-        note "Regenerate grub boot list with acpi=off ...";
-
-        DoOrDie CopyToKeep /etc/default/grub;
-        DoOrDie ApplyPatch /etc/default/grub;
-
-        DoOrDie sudo update-grub;
-
-        DoOrDie cp -pf "${cfg}" "keep${cfg}.noacpi";
-        ;;
+#      ($grubWithoutUsb | grubWithoutUsb)
+#         step="$grubWithoutUsb grubWithoutUsb";
+#         note "Regenerate grub boot list without the USB ...";
+#
+#         DoOrDie sudo rm -f "${map}";
+#         DoOrDie sudo update-grub;
+#
+#         local file;
+#         for file in "${cfg}" "${map}"; do
+#             if [[ -e ${file} ]]; then
+#                 DoOrDie cp -pf "${file}" "keep${file}.nousb";
+#             fi
+#         done
+#         ;;
+#
+#       ($grubNoProbe | grubNoProbe)
+#         step="$grubNoProbe grubNoProbe";
+#         note "Regenerate grub boot list without hard drive ...";
+#
+#         DoOrDie CopyToKeep /etc/grub.d/30_os-prober;
+#         DoOrDie InstallOurOwn /etc/grub.d/30_os-prober;
+#
+#         DoOrDie sudo rm "${map}";
+#         DoOrDie sudo update-grub;
+#         ;;
+#
+#       ($grubNoAcpi | grubNoAcpi)
+#         step="$grubNoAcpi grubNoAcpi";
+#         note "Regenerate grub boot list with acpi=off ...";
+#
+#         DoOrDie CopyToKeep /etc/default/grub;
+#         DoOrDie ApplyPatch /etc/default/grub;
+#
+#         DoOrDie sudo update-grub;
+#
+#         DoOrDie cp -pf "${cfg}" "keep${cfg}.noacpi";
+#         ;;
 
       ($major.99)
         step="$major.99 sanityCheck";
@@ -81,6 +117,17 @@ function grubConf
         listLoggedSteps $major | while read step name status; do
             printf "%-7s %-23s %s\n" $step $name $status;
             case "$installDist $name" in
+              (*grubNoUuid)
+                CheckCurrent "${cfg}";
+                ;;
+              (*grubDualDisk)
+                (DoOrDie sudo mount /dev/sdb8 /mnt);
+                (DoOrDie sudo diff "${cfg}" "${cfg/boot/mnt}");
+                (DoOrDie sudo umount /mnt);
+                ;;
+
+              # old but still needed for checking
+
               (*grubWithoutUsb)
                 CheckOriginal --nousb "${cfg}" "${map}";
                 ;;
