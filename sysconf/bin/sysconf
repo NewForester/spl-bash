@@ -244,7 +244,7 @@ case "$1" in
 
   (2*  | grub*)
     source sysconf-grub;
-    grubConf "$@";
+    grubConf 2 "$@";
     ;;
 
   (initialSave | bashProfile | installScripts | mountSysconf | sudoersGroup | rootPassword | firstStep)

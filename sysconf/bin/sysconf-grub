@@ -8,21 +8,37 @@
 ##  NB:     The caller must source functions etc à la sysconf script.
 ##
 
-# do it
+function defineSteps
+{
+    local major="$1"; shift;
+    local minor=0;
+
+    minor=$((minor+1));
+    grubWithoutUsb=$major.$minor;
+
+    minor=$((minor+1));
+    grubNoProbe=$major.$minor;
+
+    minor=$((minor+1));
+    grubNoAcpi=$major.$minor;
+}
 
 function grubConf
 {
+    local major="$1"; shift;
+    defineSteps $major;
+
     local map="/boot/grub/device.map";
     local cfg="/boot/grub/grub.cfg";
 
     case "$1" in
-      (2 | grub)
-        listOptions 2 grub;
+      ($major | grub)
+        listOptions sysconf-grub "$1";
         quit;
         ;;
 
-      (2.1 | grubWithoutUsb)
-        step="2.1 grubWithoutUsb";
+      ($grubWithoutUsb | grubWithoutUsb)
+        step="$grubWithoutUsb grubWithoutUsb";
         note "Regenerate grub boot list without the USB ...";
 
         DoOrDie sudo rm -f "${map}";
@@ -36,8 +52,8 @@ function grubConf
         done
         ;;
 
-      (2.2 | grubNoProbe)
-        step="2.2 grubNoProbe";
+      ($grubNoProbe | grubNoProbe)
+        step="$grubNoProbe grubNoProbe";
         note "Regenerate grub boot list without hard drive ...";
 
         DoOrDie CopyToKeep /etc/grub.d/30_os-prober;
@@ -47,8 +63,8 @@ function grubConf
         DoOrDie sudo update-grub;
         ;;
 
-      (2.3 | grubNoAcpi)
-        step="2.3 grubNoAcpi";
+      ($grubNoAcpi | grubNoAcpi)
+        step="$grubNoAcpi grubNoAcpi";
         note "Regenerate grub boot list with acpi=off ...";
 
         DoOrDie CopyToKeep /etc/default/grub;
@@ -59,10 +75,10 @@ function grubConf
         DoOrDie cp -pf "${cfg}" "keep${cfg}.noacpi";
         ;;
 
-      (2.99)
-        step="2.99 sanityCheck";
+      ($major.99)
+        step="$major.99 sanityCheck";
         note "Checking grub ...";
-        listLoggedSteps ${1%.*} | while read step name status; do
+        listLoggedSteps $major | while read step name status; do
             printf "%-7s %-23s %s\n" $step $name $status;
             case "$installDist $name" in
               (*grubWithoutUsb)
@@ -84,7 +100,7 @@ function grubConf
 
       (*)
         badOption "$1";
-        listOptions 2 grub;
+        listOptions sysconf-grub $major;
         quit 1;
         ;;
     esac
