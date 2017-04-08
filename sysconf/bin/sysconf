@@ -239,7 +239,7 @@ case "$1" in
 
   (3*  | firmware*)
     source sysconf-firmware;
-    firmwareConf "$@";
+    firmwareConf 3 "$@";
     ;;
 
   (2*  | grub*)
