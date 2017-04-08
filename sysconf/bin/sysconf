@@ -237,7 +237,7 @@ case "$1" in
     hostsConf "$@";
     ;;
 
-  (3*  | firmware*)
+  (3*  | firmware* | microcode* )
     source sysconf-firmware;
     firmwareConf 3 "$@";
     ;;
