@@ -14,31 +14,23 @@ function defineSteps
     local minor=0;
 
     minor=$((minor+1));
-    microcodeAmd=$major.$minor;
-
-    minor=$((minor+1));
-    microcodeIntel=$major.$minor;
-
-    minor=$((minor+1));
-    firmwareNetgear=$major.$minor;
-
-    minor=$((minor+1));
-    firmwareBelkin=$major.$minor;
-
-    minor=$((minor+1));
-    firmwareRtl=$major.$minor;
+    microcodeAmd=$major.$minor.A;
+    microcodeIntel=$major.$minor.I;
 
     minor=$((minor+1));
     firmwareRadeon=$major.$minor;
 
     minor=$((minor+1));
-    firmwareDvb=$major.$minor;
+    firmwareRealtek=$major.$minor.R;
+    firmwareLblink=$major.$minor.L;
+    firmwareNetgear=$major.$minor.N;
+    firmwareBelkin=$major.$minor.B;
 
     minor=$((minor+1));
     firmwareSdhc=$major.$minor;
 
     minor=$((minor+1));
-    firmwareLblink=$major.$minor;
+    firmwareDvb=$major.$minor;
 }
 
 function bewareGrub
@@ -79,6 +71,30 @@ function firmwareConf
         bewareGrub;
         ;;
 
+      ($firmwareRadeon | firmwareRadeon)
+        step="$firmwareRadeon firmwareRadeon";
+        note "Install firmware for the Radeon graphic chips ...";
+
+        DoOrDie sudo cp -pR "${fwbase}/radeon" "/lib/firmware/";
+        ;;
+
+      ($firmwareRealtek | firmwareRealtek)
+        step="$firmwareRealtek firmwareRealtek";
+        note "Install firmware for the Realtek network interface chips ...";
+
+        DoOrDie sudo cp -pR "${fwbase}/rtl_nic" "/lib/firmware/";
+        ;;
+
+      ($firmwareLblink | firmwareLblink)
+        step="$firmwareLblink firmwareLblink";
+        note "Install firmware for the LB Link USB wifi stick ...";
+
+        DoOrDie sudo cp -pR "${fwbase}/rtlwifi" "/lib/firmware/";
+
+        echo "... add script to unload/reload the driver module when entering/leaving a suspend mode";
+        DoOrDie InstallOurOwn /etc/pm/sleep.d/75-rtlwifi;
+        ;;
+
       ($firmwareNetgear | firmwareNetgear)
         step="$firmwareNetgear firmwareNetgear";
         note "Install firmware for the Netgear PCMCIA wifi card ...";
@@ -96,18 +112,11 @@ function firmwareConf
         DoOrDie sudo cp -pR "${fwbase}/zd1211" "/lib/firmware/";
         ;;
 
-      ($firmwareRtl | firmwareRtl)
-        step="$firmwareRtl firmwareRtl";
-        note "Install firmware for the RTL network interface chips ...";
+      ($firmwareSdhc | firmwareSdhc)
+        step="$firmwareSdhc firmwareSdhc";
+        note "Install firmware for SDHC flash card reader ...";
 
-        DoOrDie sudo cp -pR "${fwbase}/rtl_nic" "/lib/firmware/";
-        ;;
-
-      ($firmwareRadeon | firmwareRadeon)
-        step="$firmwareRadeon firmwareRadeon";
-        note "Install firmware for the Radeon graphic chips ...";
-
-        DoOrDie sudo cp -pR "${fwbase}/radeon" "/lib/firmware/";
+        DoOrDie sudo cp -pR "${fwbase}/ene-ub6250" "/lib/firmware/";
         ;;
 
       ($firmwareDvb | firmwareDvb)
@@ -116,23 +125,6 @@ function firmwareConf
 
         fwbase="/media/work/projects/mythtv/firmware"
         DoOrDie sudo cp -p "${fwbase}/"{dvb-usb-dib0700-1.20.fw,dvb-usb-ec168.fw} "/lib/firmware";
-        ;;
-
-      ($firmwareSdhc | firmwareSdhc)
-        step="$firmwareSdhc firmwareSdhc";
-        note "Install firmware for SDHC flash card reader ...";
-
-        DoOrDie sudo cp -pR "${fwbase}/ene-ub6250" "/lib/firmware/";
-        ;;
-
-      ($firmwareLblink | firmwareLblink)
-        step="$firmwareLblink firmwareLblink";
-        note "Install firmware for the LB Link USB wifi stick ...";
-
-        DoOrDie sudo cp -pR "${fwbase}/rtlwifi" "/lib/firmware/";
-
-        echo "... add script to unload/reload the driver module when entering/leaving a suspend mode";
-        DoOrDie InstallOurOwn /etc/pm/sleep.d/75-rtlwifi;
         ;;
 
       ($major.99)
@@ -150,6 +142,16 @@ function firmwareConf
                 CheckCurrent /etc/{passwd,group};
                 error "$needsTLC";
                 ;;
+              (*firmwareRadeon*)
+                error "$needsTLC";
+                ;;
+              (*firmwareRealtek*)
+                error "$needsTLC";
+                ;;
+              (*firmwareLblink*)
+                CheckOurOwn /etc/pm/sleep.d/75-rtlwifi;
+                error "$needsTLC";
+                ;;
               (*firmwareNetgear*)
                 CheckOurOwn /etc/pm/sleep.d/75-prism;
                 error "$needsTLC";
@@ -157,21 +159,11 @@ function firmwareConf
               (*firmwareBelkin*)
                 error "$needsTLC";
                 ;;
-              (*firmwareRtl*)
-                error "$needsTLC";
-                ;;
-              (*firmwareRadeon*)
+              (*firmwareSdhc*)
                 error "$needsTLC";
                 ;;
               (*firmwareDvb*)
                   error "$needsTLC";
-                ;;
-              (*firmwareSdhc*)
-                error "$needsTLC";
-                ;;
-              (*firmwareLblink*)
-                CheckOurOwn /etc/pm/sleep.d/75-rtlwifi;
-                error "$needsTLC";
                 ;;
             esac
         done
