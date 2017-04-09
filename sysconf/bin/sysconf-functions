@@ -31,6 +31,12 @@
 ##      addUserToGroups         - safely add a user to one or more groups
 ##      delUserFromGroups       - safely remove a user from one or more groups
 ##
+##  Wrapper functions for volumes:
+##
+##      createLogicalVolume     - create a logical volume under automounter control
+##      createVolumeMountPoint  - create a mount point and optionally set ownership/mode of volume root
+##      createAutomounterGroups - place a local group of logical volume under automounter control
+##
 ##  Workhorse functions:
 ##
 ##      Deploy          - deploy file from ~/keep to /etc or where ever via MassageFile
@@ -187,6 +193,51 @@ function delFromGroup
             note "Log out and back in again to leave the groups";
         fi
     fi
+}
+
+#  Wrapper functions for volumes
+
+function createLogicalVolume
+{
+    local localGroup="$1" && shift;
+    local localName="$1" && shift;
+    local size="$1" && shift;
+
+    if [[ ! -h "/dev/${HOSTNAME}/${localGroup}_${localName}" ]]; then
+        DoOrDieLocal sudo volume create "${localGroup}" "${localName}" "${size}";
+    fi
+}
+
+function createVolumeMountPoint
+{
+    local mp="$1" && shift;
+    local own="$1" && shift;
+    local mode="$1" && shift;
+
+    if [[ ! -d "${mp}" ]]; then
+        DoOrDie sudo mkdir -p "${mp}";
+    fi
+
+    if ! mountpoint "${mp}" > /dev/null; then
+        DoOrDie sudo mount "/dev/${HOSTNAME}/${installDist}_${mp##*/}" "${mp}";
+    fi
+
+    if [[ -n "${own}" ]]; then
+        DoOrDie sudo chown "${own}" "${mp}";
+    fi
+
+    if [[ -n "${mode}" ]]; then
+        DoOrDie sudo chmod "${mode}" "${mp}";
+    fi
+}
+
+function createAutomounterGroups
+{
+    local localGroup;
+
+    for localGroup; do
+        DoOrDieLocal sudo volume import "${localGroup}";
+    done
 }
 
 # Workhorse functions
