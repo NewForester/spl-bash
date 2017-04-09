@@ -234,7 +234,7 @@ case "$1" in
 
   (4*  | hosts*)
     source sysconf-hosts;
-    hostsConf "$@";
+    hostsConf 4 "$@";
     ;;
 
   (3*  | firmware* | microcode* )

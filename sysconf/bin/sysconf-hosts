@@ -8,18 +8,31 @@
 ##  NB:     The caller must source functions etc à la sysconf script.
 ##
 
-# do it
+function defineSteps
+{
+    local major="$1"; shift;
+    local minor=0;
+
+    minor=$((minor+1));
+    hostsConfigure=$major.$minor;
+
+    minor=$((minor+1));
+    hostsAccess=$major.$minor;
+}
 
 function hostsConf
 {
+    local major="$1"; shift;
+    defineSteps $major;
+
     case "$1" in
-      (4 | hosts)
-        listOptions 4 hosts;
+      ($major | hosts)
+        listOptions sysconf-hosts "$1";
         quit;
         ;;
 
-      (4.1 | 4.1.R | hostsConfigure)
-        step="4.1 hostsConfigure";
+      ($hostsConfigure | $hostsConfigure.R | hostsConfigure)
+        step="$hostsConfigure hostsConfigure";
         note "Configure hosts and networks ...";
 
         DoOrDie InstallOurOwn --opt /etc/ethers;
@@ -27,7 +40,7 @@ function hostsConf
         DoOrDie CopyToKeep /etc/networks;
         DoOrDie ApplyPatch /etc/networks;
 
-        if [[ "$1" != "4.1.R" ]]; then
+        if [[ "$1" == "$hostsConfigure.R" ]]; then
             DoOrDie rm -fr keep/etc/hosts.d;
         fi
 
@@ -41,11 +54,11 @@ function hostsConf
         DoOrDie Deploy /etc/hosts;
         ;;
 
-      (4.2 | 4.2.R | hostsAccess)
-        step="4.2 hostsAccess";
+      ($hostsAccess | $hostsAccess.R | hostsAccess)
+        step="$hostsAccess hostsAccess";
         note "Configure hosts.allow and hosts.deny ...";
 
-        if [[ "$1" != "4.2.R" ]]; then
+        if [[ "$1" == "$hostsAccess.R" ]]; then
             DoOrDie rm -fr keep/etc/hosts.allow.d;
         fi
 
@@ -53,10 +66,10 @@ function hostsConf
         DoOrDie ApplyPatch /etc/{hosts.allow,hosts.deny};
         ;;
 
-      (4.99)
-        step="4.99 sanityCheck";
+      ($major.99)
+        step="$major.99 sanityCheck";
         note "Checking hosts ...";
-        listLoggedSteps ${1%.*} | while read step name status; do
+        listLoggedSteps $major | while read step name status; do
             printf "%-7s %-23s %s\n" $step $name $status;
             case "$installDist $name" in
               (*hostsConfigure)
@@ -77,7 +90,7 @@ function hostsConf
 
       (*)
         badOption "$1";
-        listOptions 4 hosts;
+        listOptions sysconf-hosts $major;
         quit 1;
         ;;
     esac
