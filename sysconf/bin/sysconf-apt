@@ -17,13 +17,13 @@ function defineSteps
     aptConfigure=$major.$minor;
 
     minor=$((minor+1));
-    squidProxy=$major.$minor;
-
-    minor=$((minor+1));
     squidInstall=$major.$minor;
 
     minor=$((minor+1));
     squidConfigure=$major.$minor;
+
+    minor=$((minor+1));
+    squidProxy=$major.$minor;
 
     minor=$((minor+1));
     aptMultimedia=$major.$minor.M;
@@ -62,22 +62,6 @@ function aptConf
         DoOrDie InstallOurOwn /etc/apt/apt.conf.d/90periodic;
         ;;
 
-      ($squidProxy | squidProxy)
-        if [[ "$HOSTNAME" == "ebony" ]]; then
-            if ! fgrep -q squid /etc/mtab; then
-                note "... set proxy later";
-                trap '-' EXIT;
-                exit;
-            fi
-        fi
-
-        step="$squidProxy squidProxy";
-        note "Configure apt to use proxy ...";
-
-        DoOrDie InstallOurOwn /etc/apt/apt.conf.d/80proxy;
-        DoOrDie sudo rm -f /etc/apt/apt.conf;
-        ;;
-
       ($squidInstall | squidInstall)
         step="$squidInstall squidInstall";
         note "Install squid caching proxy ...";
@@ -93,6 +77,14 @@ function aptConf
         DoOrDie ApplyPatch --sudo /etc/squid/squid.conf squid.apt;
 
         DoOrDie sudo service squid reload;
+        ;;
+
+      ($squidProxy | squidProxy)
+        step="$squidProxy squidProxy";
+        note "Configure apt to use squid proxy ...";
+
+        DoOrDie InstallOurOwn /etc/apt/apt.conf.d/80proxy;
+        DoOrDie sudo rm -f /etc/apt/apt.conf;
         ;;
 
       ($aptMultimedia | aptMultimedia)
@@ -132,15 +124,15 @@ function aptConf
                 CheckOriginal --opt /etc/apt/apt.conf;
                 CheckOurOwn /etc/apt/apt.conf.d/90periodic;
                 ;;
-              (*squidProxy | *aptProxy)
-                CheckOurOwn /etc/apt/apt.conf.d/80proxy;
-                ;;
               (*squidInstall)
                 CheckCurrent /etc/{passwd,group};
                 ;;
               (*squidConfigure | *aptSquidConfigure)
                 CheckOriginal --sudo /etc/squid/squid.conf;
                 CheckPatch --sudo /etc/squid/squid.conf squid.apt;
+                ;;
+              (*squidProxy | *aptProxy)
+                CheckOurOwn /etc/apt/apt.conf.d/80proxy;
                 ;;
               (*aptMultimedia)
                 CheckOurOwn /etc/apt/sources.list.d/${installRelease}-multimedia.list;
