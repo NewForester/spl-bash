@@ -69,8 +69,8 @@ function aptConf
         step="$squidVolume squidVolume";
         note "Create logical volume for squid proxy server ...";
 
-        createLogicalVolume "${installDist}" squid 2G;
-        createVolumeMountPoint /var/spool/squid proxy:proxy;
+        createLogicalVolume "${installDist}" squid3 2G;
+        createVolumeMountPoint /var/spool/squid3 proxy:proxy;
 
         fini="you will need to run sysconf blkdevFstab before rebooting";
         ;;
@@ -79,17 +79,17 @@ function aptConf
         step="$squidInstall squidInstall";
         note "Install squid caching proxy ...";
 
-        installPackage squid;
+        installPackage squid3;
         ;;
 
       ($squidConfigure | squidConfigure)
         step="$squidConfigure squidConfigure";
         note "Configure squid caching proxy ...";
 
-        DoOrDie CopyToKeep --sudo /etc/squid/squid.conf;
-        DoOrDie ApplyPatch --sudo /etc/squid/squid.conf squid.apt;
+        DoOrDie CopyToKeep --sudo /etc/squid3/squid.conf;
+        DoOrDie ApplyPatch --sudo /etc/squid3/squid.conf squid.${installDist};
 
-        DoOrDie sudo service squid reload;
+        DoOrDie sudo service squid3 reload;
         ;;
 
       ($squidProxy | squidProxy)
@@ -138,15 +138,15 @@ function aptConf
                 CheckOurOwn /etc/apt/apt.conf.d/90periodic;
                 ;;
               (*squidVolume)
-                (DoOrDie ls -ld /var/spool/squid);
+                (DoOrDie ls -ld /var/spool/squid3);
                 (DoOrDie fgrep /var/spool /etc/mtab);
                 ;;
               (*squidInstall)
                 CheckCurrent /etc/{passwd,group};
                 ;;
               (*squidConfigure | *aptSquidConfigure)
-                CheckOriginal --sudo /etc/squid/squid.conf;
-                CheckPatch --sudo /etc/squid/squid.conf squid.apt;
+                CheckOriginal --sudo /etc/squid3/squid.conf;
+                CheckPatch --sudo /etc/squid3/squid.conf squid.${installDist};
                 ;;
               (*squidProxy | *aptProxy)
                 CheckOurOwn /etc/apt/apt.conf.d/80proxy;
