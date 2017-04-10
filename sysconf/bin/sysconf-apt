@@ -17,6 +17,9 @@ function defineSteps
     aptConfigure=$major.$minor;
 
     minor=$((minor+1));
+    squidVolume=$major.$minor;
+
+    minor=$((minor+1));
     squidInstall=$major.$minor;
 
     minor=$((minor+1));
@@ -60,6 +63,16 @@ function aptConf
 
         echo "... cache maintenance once a week";
         DoOrDie InstallOurOwn /etc/apt/apt.conf.d/90periodic;
+        ;;
+
+      ($squidVolume | squidVolume)
+        step="$squidVolume squidVolume";
+        note "Create logical volume for squid proxy server ...";
+
+        createLogicalVolume "${installDist}" squid 2G;
+        createVolumeMountPoint /var/spool/squid proxy:proxy;
+
+        fini="you will need to run sysconf blkdevFstab before rebooting";
         ;;
 
       ($squidInstall | squidInstall)
@@ -123,6 +136,10 @@ function aptConf
                 CheckDeployed /etc/apt/sources.list;
                 CheckOriginal --opt /etc/apt/apt.conf;
                 CheckOurOwn /etc/apt/apt.conf.d/90periodic;
+                ;;
+              (*squidVolume)
+                (DoOrDie ls -ld /var/spool/squid);
+                (DoOrDie fgrep /var/spool /etc/mtab);
                 ;;
               (*squidInstall)
                 CheckCurrent /etc/{passwd,group};
