@@ -229,7 +229,7 @@ case "$1" in
 
   (5*  | apt*)
     source sysconf-apt;
-    aptConf "$@";
+    aptConf 5 "$@";
     ;;
 
   (4*  | hosts*)

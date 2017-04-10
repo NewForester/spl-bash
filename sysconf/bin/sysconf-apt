@@ -8,18 +8,46 @@
 ##  NB:     The caller must source functions etc à la sysconf script.
 ##
 
-# do it
+function defineSteps
+{
+    local major="$1"; shift;
+    local minor=0;
+
+    minor=$((minor+1));
+    aptConfigure=$major.$minor;
+
+    minor=$((minor+1));
+    aptProxy=$major.$minor;
+
+    minor=$((minor+1));
+    aptSquidInstall=$major.$minor;
+
+    minor=$((minor+1));
+    aptSquidConfigure=$major.$minor;
+
+    minor=$((minor+1));
+    aptMultimedia=$major.$minor;
+
+    minor=$((minor+1));
+    aptBackports=$major.$minor;
+
+    minor=$((minor+1));
+    aptUpdate=$major.$minor;
+}
 
 function aptConf
 {
+    local major="$1"; shift;
+    defineSteps $major;
+
     case "$1" in
-      (5 | apt)
-        listOptions 5 apt;
+      ($major | apt)
+        listOptions sysconf-apt "$1";
         quit;
         ;;
 
-      (5.1 | aptConfigure)
-        step="5.1 aptConfigure";
+      ($aptConfigure | aptConfigure)
+        step="$aptConfigure aptConfigure";
         note "Configure apt ...";
 
         echo "... no source packages please";
@@ -37,7 +65,7 @@ function aptConf
         DoOrDie InstallOurOwn /etc/apt/apt.conf.d/90periodic;
         ;;
 
-      (5.2 | aptProxy)
+      ($aptProxy | aptProxy)
         if [[ "$HOSTNAME" == "ebony" ]]; then
             if ! fgrep -q squid /etc/mtab; then
                 note "... set proxy later";
@@ -46,22 +74,22 @@ function aptConf
             fi
         fi
 
-        step="5.2 aptProxy";
+        step="$aptProxy aptProxy";
         note "Configure apt to use proxy ...";
 
         DoOrDie InstallOurOwn /etc/apt/apt.conf.d/80proxy;
         DoOrDie sudo rm -f /etc/apt/apt.conf;
         ;;
 
-      (5.3 | aptSquidInstall)
-        step="5.3 aptSquidInstall";
+      ($aptSquidInstall | aptSquidInstall)
+        step="$aptSquidInstall aptSquidInstall";
         note "Install squid caching proxy ...";
 
         installPackage squid;
         ;;
 
-      (5.4 | aptSquidConfigure)
-        step="5.4 aptSquidConfigure";
+      ($aptSquidConfigure | aptSquidConfigure)
+        step="$aptSquidConfigure aptSquidConfigure";
         note "Configure squid caching proxy ...";
 
         DoOrDie CopyToKeep --sudo /etc/squid/squid.conf;
@@ -70,8 +98,8 @@ function aptConf
         DoOrDie sudo service squid reload;
         ;;
 
-      (5.5 | aptMultimedia)
-        step="5.5 aptMultimedia";
+      ($aptMultimedia | aptMultimedia)
+        step="$aptMultimedia aptMultimedia";
         note "Configure multimedia repository ...";
 
         DoOrDie InstallOurOwn /etc/apt/sources.list.d/wheezy-multimedia.list;
@@ -79,8 +107,8 @@ function aptConf
         installKeyring deb-multimedia-keyring;
         ;;
 
-      (5.6 | aptBackports)
-        step="5.6 aptBackports";
+      ($aptBackports | aptBackports)
+        step="$aptBackports aptBackports";
         note "Configure backports repository ...";
 
         DoOrDie InstallOurOwn /etc/apt/sources.list.d/wheezy-backports.list;
@@ -88,17 +116,17 @@ function aptConf
         installKeyring pkg-mozilla-archive-keyring;
         ;;
 
-      (5.7 | aptUpdate)
-        step="5.7 aptUpdate";
+      ($aptUpdate | aptUpdate)
+        step="$aptUpdate aptUpdate";
         note "Make sure installation is up to date ...";
 
         refreshPackages;
         ;;
 
-      (5.99)
-        step="5.99 sanityCheck";
+      ($major.99)
+        step="$major.99 sanityCheck";
         note "Checking apt ...";
-        listLoggedSteps ${1%.*} | while read step name status; do
+        listLoggedSteps $major | while read step name status; do
             printf "%-7s %-23s %s\n" $step $name $status;
             case "$installDist $name" in
               (*aptConfigure)
@@ -109,6 +137,9 @@ function aptConf
                 ;;
               (*aptProxy)
                 CheckOurOwn /etc/apt/apt.conf.d/80proxy;
+                ;;
+              (*aptSquidInstall)
+                CheckCurrent /etc/{passwd,group};
                 ;;
               (*aptSquidConfigure)
                 CheckOriginal --sudo /etc/squid/squid.conf;
@@ -127,7 +158,7 @@ function aptConf
 
       (*)
         badOption "$1";
-        listOptions 5 apt;
+        listOptions sysconf-apt $major;
         quit 1;
         ;;
     esac
