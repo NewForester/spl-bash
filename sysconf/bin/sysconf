@@ -227,7 +227,7 @@ case "$1" in
     x11Conf "$@";
     ;;
 
-  (5*  | apt*)
+  (5*  | apt* | squid*)
     source sysconf-apt;
     aptConf 5 "$@";
     ;;

@@ -17,19 +17,17 @@ function defineSteps
     aptConfigure=$major.$minor;
 
     minor=$((minor+1));
-    aptProxy=$major.$minor;
+    squidProxy=$major.$minor;
 
     minor=$((minor+1));
-    aptSquidInstall=$major.$minor;
+    squidInstall=$major.$minor;
 
     minor=$((minor+1));
-    aptSquidConfigure=$major.$minor;
+    squidConfigure=$major.$minor;
 
     minor=$((minor+1));
-    aptMultimedia=$major.$minor;
-
-    minor=$((minor+1));
-    aptBackports=$major.$minor;
+    aptMultimedia=$major.$minor.M;
+    aptBackports=$major.$minor.B;
 
     minor=$((minor+1));
     aptUpdate=$major.$minor;
@@ -41,9 +39,8 @@ function aptConf
     defineSteps $major;
 
     case "$1" in
-      ($major | apt)
+      ($major | apt | squid)
         listOptions sysconf-apt "$1";
-        quit;
         ;;
 
       ($aptConfigure | aptConfigure)
@@ -65,7 +62,7 @@ function aptConf
         DoOrDie InstallOurOwn /etc/apt/apt.conf.d/90periodic;
         ;;
 
-      ($aptProxy | aptProxy)
+      ($squidProxy | squidProxy)
         if [[ "$HOSTNAME" == "ebony" ]]; then
             if ! fgrep -q squid /etc/mtab; then
                 note "... set proxy later";
@@ -74,22 +71,22 @@ function aptConf
             fi
         fi
 
-        step="$aptProxy aptProxy";
+        step="$squidProxy squidProxy";
         note "Configure apt to use proxy ...";
 
         DoOrDie InstallOurOwn /etc/apt/apt.conf.d/80proxy;
         DoOrDie sudo rm -f /etc/apt/apt.conf;
         ;;
 
-      ($aptSquidInstall | aptSquidInstall)
-        step="$aptSquidInstall aptSquidInstall";
+      ($squidInstall | squidInstall)
+        step="$squidInstall squidInstall";
         note "Install squid caching proxy ...";
 
         installPackage squid;
         ;;
 
-      ($aptSquidConfigure | aptSquidConfigure)
-        step="$aptSquidConfigure aptSquidConfigure";
+      ($squidConfigure | squidConfigure)
+        step="$squidConfigure squidConfigure";
         note "Configure squid caching proxy ...";
 
         DoOrDie CopyToKeep --sudo /etc/squid/squid.conf;
@@ -135,13 +132,13 @@ function aptConf
                 CheckOriginal --opt /etc/apt/apt.conf;
                 CheckOurOwn /etc/apt/apt.conf.d/90periodic;
                 ;;
-              (*aptProxy)
+              (*squidProxy | *aptProxy)
                 CheckOurOwn /etc/apt/apt.conf.d/80proxy;
                 ;;
-              (*aptSquidInstall)
+              (*squidInstall)
                 CheckCurrent /etc/{passwd,group};
                 ;;
-              (*aptSquidConfigure)
+              (*squidConfigure | *aptSquidConfigure)
                 CheckOriginal --sudo /etc/squid/squid.conf;
                 CheckPatch --sudo /etc/squid/squid.conf squid.apt;
                 ;;
