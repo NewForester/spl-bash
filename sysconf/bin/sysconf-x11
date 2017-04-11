@@ -8,26 +8,53 @@
 ##  NB:     The caller must source functions etc à la sysconf script.
 ##
 
-# do it
+function defineSteps
+{
+    local major="$1"; shift;
+    local minor=0;
+
+    minor=$((minor+1));
+    x11Keyboard=$major.$minor;
+
+    minor=$((minor+1));
+    x11Touchpad=$major.$minor;
+
+    minor=$((minor+1));
+    x11Mouse=$major.$minor.L;
+    x11VMmouse=$major.$minor.V;
+
+    minor=$((minor+1));
+    x11Dell=$major.$minor.D;
+    x11Hanns=$major.$minor.H;
+
+    minor=$((minor+1));
+    x11Vesa=$major.$minor;
+
+    minor=$((minor+1));
+    x11Xinerama=$major.$minor;
+}
 
 function x11Conf
 {
+    local major="$1"; shift;
+    defineSteps $major;
+
     case "$1" in
-      (6 | x11)
-        listOptions 6 x11;
+      ($major | x11)
+        listOptions sysconf-x11 "$1";
         quit;
         ;;
 
-      (6.1 | x11Keyboard)
-        step="6.1 x11Keyboard";
+      ($x11Keyboard | x11Keyboard)
+        step="$x11Keyboard x11Keyboard";
         note "Configure the X-11 keyboard ...";
 
         DoOrDie CopyToKeep /etc/default/keyboard;
         DoOrDie ApplyPatch /etc/default/keyboard;
         ;;
 
-      (6.2 | x11Touchpad)
-        step="6.2 x11Touchpad";
+      ($x11Touchpad | x11Touchpad)
+        step="$x11Touchpad x11Touchpad";
         note "Configure the X-11 touchpad handling ...";
 
         DoOrDie InstallOurOwn /etc/X11/xorg.conf.d/80-touchpad.conf;
@@ -36,22 +63,22 @@ function x11Conf
         DoOrDie sudo chmod g+w /var/run;
         ;;
 
-      (6.3.H | x11Mouse)
-        step="6.3.H x11Mouse";
+      ($x11Mouse | x11Mouse)
+        step="$x11Mouse x11Mouse";
         note "Configure left hand mouse operation on host machine ...";
 
         DoOrDie InstallOurOwn /etc/X11/xorg.conf.d/85-left-hand-mouse.conf;
         ;;
 
-      (6.3.G | x11VMmouse)
-        step="6.3.G x11VMmouse";
+      ($x11VMmouse | x11VMmouse)
+        step="$x11VMmouse x11VMmouse";
         note "Install vmmouse in guest machine to stop pointer grabbing ...";
 
         installPackage xserver-xorg-input-vmmouse;
         ;;
 
-      (6.4.D | x11Dell)
-        step="6.4.D x11Dell";
+      ($x11Dell | x11Dell)
+        step="$x11Dell x11Dell";
         note "Configure X-11 for the Dell P1110 monitor ...";
 
         if [[ -e /etc/X11/xorg.conf.d/98-hh261d.conf ]]; then
@@ -60,8 +87,8 @@ function x11Conf
         DoOrDie InstallOurOwn /etc/X11/xorg.conf.d/98-dell_p1110.conf;
         ;;
 
-      (6.4.H | x11Hanns)
-        step="6.4.H x11Hanns";
+      ($x11Hanns | x11Hanns)
+        step="$x11Hanns x11Hanns";
         note "Configure X-11 for the Hanns-G flat screen monitor ...";
 
         if [[ -e /etc/X11/xorg.conf.d/98-hh251d.conf ]]; then
@@ -70,24 +97,25 @@ function x11Conf
         DoOrDie InstallOurOwn /etc/X11/xorg.conf.d/98-hh251d.conf;
         ;;
 
-      (6.5 | x11Vesa)
-        step="6.5 x11Vesa";
+      ($x11Vesa | x11Vesa)
+        step="$x11Vesa x11Vesa";
         note "Configure X-11 to use the vesa driver ...";
 
         DoOrDie InstallOurOwn /etc/X11/xorg.conf.d/10-vesa.conf;
         ;;
 
-      (6.6 | x11Xinerama)
-        step="6.6 x11Xinerama";
+      ($x11Xinerama | x11Xinerama)
+        step="$x11Xinerama x11Xinerama";
         note "Configure X-11 for Xinerama operation ...";
 
         DoOrDie InstallOurOwn /etc/X11/xorg.conf.d/90-xinerama.conf;
         ;;
 
-      (6.99)
-        step="6.99 sanityCheck";
+      ($major.99)
+        step="$major.99 sanityCheck";
+
         note "Checking x11 ...";
-        listLoggedSteps ${1%.*} | while read step name status; do
+        listLoggedSteps $major | while read step name status; do
             printf "%-7s %-23s %s\n" $step $name $status;
             case "$installDist $name" in
               (*x11Keyboard)
@@ -100,6 +128,9 @@ function x11Conf
                 ;;
               (*x11Mouse)
                 CheckOurOwn /etc/X11/xorg.conf.d/85-left-hand-mouse.conf;
+                ;;
+              (*x11VMmouse)
+                CheckCurrent /etc/{passwd,group};
                 ;;
               (*x11Dell)
                 CheckOurOwn /etc/X11/xorg.conf.d/98-dell_p1110.conf;
@@ -120,7 +151,7 @@ function x11Conf
 
       (*)
         badOption "$1";
-        listOptions 6 x11;
+        listOptions sysconf-x11 $major;
         quit 1;
         ;;
     esac

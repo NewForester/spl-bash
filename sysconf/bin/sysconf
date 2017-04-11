@@ -224,7 +224,7 @@ case "$1" in
 
   (6*  | x11*)
     source sysconf-x11;
-    x11Conf "$@";
+    x11Conf 6 "$@";
     ;;
 
   (5*  | apt* | squid*)
