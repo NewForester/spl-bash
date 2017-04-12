@@ -58,11 +58,6 @@
 ##      CheckPatch      - check our patches are up to date (but not that they have been applied)
 ##      CheckDotDir     - check function for InsertIntoFile
 ##
-##  Network independence (no hard wiring of LAN):
-##
-##      LanAddress      - host's IP address
-##      LanName         - from LanAddress
-##
 
 # Trivial Functions
 
@@ -257,6 +252,21 @@ function masterPath
     echo ${master};
 }
 
+function MassageFile
+{
+    hostIp=${hostIp:-$(awk "/${HOSTNAME}\t/"'{ print $1 }' /etc/hosts)};
+
+    ${sudo/--/} sed \
+        -e "s~%ADMIN%~${USER}~g"                        -e "s~%OS%~${installDist}~g"                    \
+        -e "s~%HOST%~${HOSTNAME}~g"                     -e "s~%HOST-IP%~${hostIp}~g"                    \
+        -e "s~%LAN%~${installLanName}~g"                -e "s~%VPN%~${installVpnName}~g"                \
+        -e "s~%LAN-SN%~${installLanNet%.0/24}~g"        -e "s~%VPN-SN%~${installVpnNet%.0/24}~g"        \
+        -e "s~%LAN-NET%~${installLanNet}~g"             -e "s~%VPN-NET%~${installVpnNet}~g"             \
+        -e "s~%LAN-DOM%~${installLanName}.lan~g"        -e "s~%VPN-DOM%~${installLanName}.vpn~g"        \
+        -e "s~%WIFI-DOM%~${installLanName}.wlan~g"      \
+        "$1" || return 1;
+}
+
 function Deploy
 {
     local sudo opt path keep;
@@ -269,15 +279,22 @@ function Deploy
 
         [[ -n "${opt}" && ! -e "${keep}" ]] && continue;
 
+        MassageFile "${keep}" > "${keep}.$$" || return 1;
+
+        touch --reference="${keep}" "${keep}.$$" || return 1;
+        chmod --reference="${keep}" "${keep}.$$" || return 1;
+
         if [[ ! -d "${path%/*}" ]]; then
             sudo mkdir -p "${path%/*}" || return 1;
         fi
 
-        sudo cp --no-preserve=owner "${keep}" "${path}" || return 1;
+        sudo cp --no-preserve=owner "${keep}.$$" "${path}" || return 1;
 
         if [[ -n "${sudo}" ]]; then
             sudo chown --reference="${keep}" "${path}" || return 1;
         fi
+
+        rm -f "${keep}.$$" || return 1;
     done
 }
 
@@ -450,7 +467,7 @@ function CheckDeployed
             error "${file} not deployed";
         elif [[ ! -e "${backup}" ]]; then
             error "${file} backup copy missing";
-        elif ${sudo/--/} diff "${backup}" "${file}"; then
+        elif ! MassageFile "${backup}" | ${sudo/--/} diff - "${file}"; then
             error "${file} discrepancy with backup";
         fi
     done
@@ -609,24 +626,6 @@ function CheckDotDir
             error "${file} patch discrepancy";
         fi
     done
-}
-
-# Network independence
-
-function LanAddress
-{
-    ip route | awk '
-      /default/ { if (nic == 0) nic = $5; next; }
-                { if (nic != 0 && $3 == nic) {dest = $1 } }
-      END       { printf "%s\n", dest }
-    ';
-}
-
-function LanName
-{
-    local subnet=$(LanAddress);
-
-    sed -e "/${subnet%/*}/s/\t.*//p" -e d /etc/networks;
 }
 
 ### Local Variables: ***

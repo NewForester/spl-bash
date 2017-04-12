@@ -52,8 +52,7 @@ function restoreWiki
             # DoOrDie does not cope well with the ( and ) in the sed expression
             # or perhaps it is just the spaces that screw it up
 
-            site=$(LanName);
-            site="${site%%-*}";
+            site="${installLan%%-*}";
 
             if [[ "$1" == "${site}" ]]; then
                 address="wiki.localhost";
