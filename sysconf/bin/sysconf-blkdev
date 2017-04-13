@@ -185,38 +185,51 @@ function blkdevConf
         DoOrDie CopyToKeep /etc/initramfs-tools/conf.d/resume;
         DoOrDie InstallOurOwn /etc/initramfs-tools/conf.d/resume;
         DoOrDie sudo update-initramfs -u;
+
+        fini="now run sysconf grubDualDisk";
         ;;
 
       ($blkdevFstab | blkdevFstab)
         step="$blkdevFstab blkdevFstab";
-        note "Change fstab to use labels not the uuids ...";
+        note "Create /etc/fstab ...";
 
         DoOrDie CopyToKeep /etc/fstab;
         DoOrDie FetchOurOwn /etc/fstab;
 
-        local keep="keep/etc/fstab";
-        local label, device, mp;
+        if [[ "${installDist}" == "devuan" ]]; then
+            DoOrDie MassageFile keep/etc/fstab '>' keep/etc/fstab.$$;
+            DoOrDie mv -f keep/etc/fstab.$$ keep/etc/fstab;
+            local dev;
+            for dev in $(awk '/^\//{ print $1 }' keep/etc/fstab); do
+               if [[ ! -e "${dev}" ]]; then
+                    DoOrDie sed -i keep/etc/fstab -e "'/${dev//\//\\/}/d'";
+               fi
+            done
+        else
+            local label, device, mp;
+            local keep="keep/etc/fstab";
 
-        for label in swapa swapb; do
-            if [[ ! -h "/dev/disk/by-label/${label}" ]]; then
-                DoOrDie sed -i "${keep}" -e "'/${label}/d'";
-            fi
-        done
-        for label in crypt; do
-            if [[ ! -e "/dev/md0" ]]; then
-                DoOrDie sed -i "${keep}" -e "'/${label}/d'";
-            fi
-        done
-        for device in fd0 sr0 sr1; do
-            if [[ ! -e "/dev/${device}" ]]; then
-                DoOrDie sed -i "${keep}" -e "'/${device}/d'";
-            fi
-        done
-        for mp in /opt; do
-            if fgrep -q "${mp} xfs" /etc/mtab; then
-                DoOrDie sed -i "${keep}" -e "'/\\/${mp}/s/ext4/xfs /'";
-            fi
-        done
+            for label in swapa swapb; do
+                if [[ ! -h "/dev/disk/by-label/${label}" ]]; then
+                    DoOrDie sed -i "${keep}" -e "'/${label}/d'";
+                fi
+            done
+            for label in crypt; do
+                if [[ ! -e "/dev/md0" ]]; then
+                    DoOrDie sed -i "${keep}" -e "'/${label}/d'";
+                fi
+            done
+            for device in fd0 sr0 sr1; do
+                if [[ ! -e "/dev/${device}" ]]; then
+                    DoOrDie sed -i "${keep}" -e "'/${device}/d'";
+                fi
+            done
+            for mp in /opt; do
+                if fgrep -q "${mp} xfs" /etc/mtab; then
+                    DoOrDie sed -i "${keep}" -e "'/\\/${mp}/s/ext4/xfs /'";
+                fi
+            done
+        fi
 
         DoOrDie Deploy /etc/fstab;
 
@@ -260,6 +273,7 @@ function blkdevConf
               (*blkdevFstab)
                 CheckOriginal /etc/fstab;
                 CheckDeployed /etc/fstab;
+                (DoOrDie ls -l /etc/fstab);
                 ;;
               (*blkdevRaid)
                 CheckOriginal /etc/mdadm/mdadm.conf;
