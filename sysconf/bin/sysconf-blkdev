@@ -81,6 +81,7 @@ function blkdevConf
                 DoOrDie sudo rm -f floppy;
                 DoOrDie sudo mv -f floppy0 floppy;
             fi
+
             case "${HOSTNAME}" in
               (alder | birch | olive)
                 if [[ -d cdrom0 ]]; then
@@ -93,12 +94,17 @@ function blkdevConf
                 ;;
               (*)
                 if [[ -d cdrom0 ]]; then
-                    DoOrDie sudo mv -f cdrom0 dvd;
                     DoOrDie sudo rm -f cdrom;
+                    DoOrDie sudo mv -f cdrom0 cdrom;
+                fi
+                if [[ -d cdrom ]]; then
+                    DoOrDie sudo mv -f cdrom dvd;
                     DoOrDie sudo ln -sf dvd/ cdrom;
                 fi
+
                 ;;
             esac
+
             if [[ -e usb ]]; then
                 DoOrDie sudo rm usb;
                 DoOrDie sudo rmdir usb*;
@@ -217,7 +223,7 @@ function blkdevConf
                 CheckCurrent /etc/{passwd,group};
                 ;;
               (*blkdevMedia)
-                (cd /media && ls -ld fd* cd* dvd* usb*) 2> /dev/null;
+                (DoOrDie ls -ld /media/fd* /media/cd* /media/dvd* /media/usb* 2> /dev/null);
                 ;;
               (*blkdevOpt)
                 ;;
