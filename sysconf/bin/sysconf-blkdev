@@ -25,8 +25,8 @@ function defineSteps
     minor=$((minor+1));
     blkdevLabels=$major.$minor;
 
-    minor=$((minor+1));
-    blkdevSwap=$major.$minor;
+#    minor=$((minor+1));
+#    blkdevSwap=$major.$minor;
 
     minor=$((minor+1));
     blkdevResume=$major.$minor;
@@ -149,6 +149,9 @@ function blkdevConf
 
             labelpartition boota /dev/sda8;
             labelpartition bootb /dev/sdb8;
+
+            DoOrDie sudo swaplabel -L swapa /dev/sda7;
+            DoOrDie sudo swaplabel -L swapb /dev/sdb7;
         else
             labelpartition root /dev/md1 /dev/sda5;
             labelpartition home /dev/md2 /dev/sda6;
@@ -158,26 +161,26 @@ function blkdevConf
         fi
         ;;
 
-      ($blkdevSwap | blkdevSwap)
-        step="$blkdevSwap blkdevSwap";
-        note "Label active swap partitions ...";
-
-        DoOrDie sudo swapon --summary > /tmp/labelswap || exit 1;
-        sed -i /tmp/labelswap \
-            -e '1d' -e 's/ .*//' -e 's/.*/sudo swaplabel -L & &/' \
-            -e 's~/dev/sd\(.\).~swap\1~' \
-            -e 's~/dev/mapper[^_]*_~~'
-
-        local line;
-        while read line; do
-           echo "   " "${line}";
-           DoOrDie sudo ${line} || exit 1;
-        done < /tmp/labelswap
-        ;;
+#      ($blkdevSwap | blkdevSwap)
+#        step="$blkdevSwap blkdevSwap";
+#        note "Label active swap partitions ...";
+#
+#        DoOrDie sudo swapon --summary > /tmp/labelswap || exit 1;
+#        sed -i /tmp/labelswap \
+#            -e '1d' -e 's/ .*//' -e 's/.*/sudo swaplabel -L & &/' \
+#            -e 's~/dev/sd\(.\).~swap\1~' \
+#            -e 's~/dev/mapper[^_]*_~~'
+#
+#        local line;
+#        while read line; do
+#           echo "   " "${line}";
+#           DoOrDie sudo ${line} || exit 1;
+#        done < /tmp/labelswap
+#        ;;
 
       ($blkdevResume | blkdevResume)
         step="$blkdevResume blkdevResume";
-        note "Change resume to use swap label not the uuid ...";
+        note "Change resume to use swap device name not the uuid ...";
 
         DoOrDie CopyToKeep /etc/initramfs-tools/conf.d/resume;
         DoOrDie InstallOurOwn /etc/initramfs-tools/conf.d/resume;
@@ -248,7 +251,7 @@ function blkdevConf
                 (DoOrDie ls -l /dev/disk/by-label);
                 ;;
               (*blkdevSwap)
-                (cd /dev/disk/by-label && ls -ld swap*);
+                (cd /dev/disk/by-label && DoOrDie ls -ld swap*);
                 ;;
               (*blkdevResume)
                 CheckOriginal /etc/initramfs-tools/conf.d/resume;
