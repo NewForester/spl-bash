@@ -140,11 +140,22 @@ function blkdevConf
         step="$blkdevLabels blkdevLabels";
         note "Apply labels to standard partitions ...";
 
-        labelpartition root /dev/md1 /dev/sda5;
-        labelpartition home /dev/md2 /dev/sda6;
-        labelpartition usr  /dev/md3 /dev/sda7;
-        labelpartition var  /dev/md4 /dev/sda8;
-        labelpartition opt  "/dev/mapper/${HOSTNAME}-fstab_opt" /dev/sda9;
+        if [[ "${installDist}" == "devuan" ]]; then
+            local volume;
+
+            for volume in "/dev/${HOSTNAME}/${installDist}_"*; do
+                labelpartition "${volume##*/}" "${volume}";
+            done
+
+            labelpartition boota /dev/sda8;
+            labelpartition bootb /dev/sdb8;
+        else
+            labelpartition root /dev/md1 /dev/sda5;
+            labelpartition home /dev/md2 /dev/sda6;
+            labelpartition usr  /dev/md3 /dev/sda7;
+            labelpartition var  /dev/md4 /dev/sda8;
+            labelpartition opt  "/dev/mapper/${HOSTNAME}-fstab_opt" /dev/sda9;
+        fi
         ;;
 
       ($blkdevSwap | blkdevSwap)
@@ -234,7 +245,7 @@ function blkdevConf
                 (DoOrDie fgrep /opt /etc/mtab);
                 ;;
               (*blkdevLabels)
-                (cd /dev/disk/by-label && ls -ld root home usr var opt);
+                (DoOrDie ls -l /dev/disk/by-label);
                 ;;
               (*blkdevSwap)
                 (cd /dev/disk/by-label && ls -ld swap*);
