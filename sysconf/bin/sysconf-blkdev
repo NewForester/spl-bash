@@ -68,7 +68,7 @@ function blkdevConf
         step="$blkdevInstallTools blkdevInstallTools";
         note "Ensure file system tools are installed";
 
-        installPackage ntfs-3g xfsprogs;
+        installPackage ntfs-3g jfsutils;
         ;;
 
       ($blkdevMedia | blkdevMedia)
