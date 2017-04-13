@@ -8,6 +8,36 @@
 ##  NB:     The caller must source functions etc à la sysconf script.
 ##
 
+function defineSteps
+{
+    local major="$1"; shift;
+    local minor=0;
+
+    minor=$((minor+1));
+    blkdevInstallTools=$major.$minor;
+
+    minor=$((minor+1));
+    blkdevMedia=$major.$minor;
+
+    minor=$((minor+1));
+    blkdevOpt=$major.$minor;
+
+    minor=$((minor+1));
+    blkdevLabels=$major.$minor;
+
+    minor=$((minor+1));
+    blkdevSwap=$major.$minor;
+
+    minor=$((minor+1));
+    blkdevResume=$major.$minor;
+
+    minor=$((minor+1));
+    blkdevFstab=$major.$minor;
+
+    minor=$((minor+1));
+    blkdevRaid=$major.$minor;
+}
+
 function labelpartition
 {
     local label="$1"; shift;
@@ -23,25 +53,26 @@ function labelpartition
     exit 1;
 }
 
-# do it
-
 function blkdevConf
 {
+    local major="$1"; shift;
+    defineSteps $major;
+
     case "$1" in
-      (8 | blkdev)
-        listOptions 8 blkdev;
+      ($major | blkdev)
+        listOptions sysconf-blkdev "$1";
         quit;
         ;;
 
-      (8.1 | blkdevInstallTools)
-        step="8.1 blkdevInstallTools";
+      ($blkdevInstallTools | blkdevInstallTools)
+        step="$blkdevInstallTools blkdevInstallTools";
         note "Ensure file system tools are installed";
 
         installPackage ntfs-3g xfsprogs;
         ;;
 
-      (8.2 | blkdevMedia)
-        step="8.2 blkdevMedia";
+      ($blkdevMedia | blkdevMedia)
+        step="$blkdevMedia blkdevMedia";
         note "Rearrange CD/DVD mount points ...";
 
         cd /media > /dev/null;
@@ -76,8 +107,8 @@ function blkdevConf
         cd - > /dev/null;
         ;;
 
-      (8.3 | blkdevOpt)
-        step="8.3 blkdevOpt";
+      ($blkdevOpt | blkdevOpt)
+        step="$blkdevOpt blkdevOpt";
         note "Ensure all can use /opt";
 
         DoOrDie sudo mount -a;
@@ -95,8 +126,8 @@ function blkdevConf
         DoOrDie sudo chmod g+w /opt;
         ;;
 
-      (8.4 | blkdevLabels)
-        step="8.4 blkdevLabels";
+      ($blkdevLabels | blkdevLabels)
+        step="$blkdevLabels blkdevLabels";
         note "Apply labels to standard partitions ...";
 
         labelpartition root /dev/md1 /dev/sda5;
@@ -106,8 +137,8 @@ function blkdevConf
         labelpartition opt  "/dev/mapper/${HOSTNAME}-fstab_opt" /dev/sda9;
         ;;
 
-      (8.5 | blkdevSwap)
-        step="8.5 blkdevSwap";
+      ($blkdevSwap | blkdevSwap)
+        step="$blkdevSwap blkdevSwap";
         note "Label active swap partitions ...";
 
         DoOrDie sudo swapon --summary > /tmp/labelswap || exit 1;
@@ -123,8 +154,8 @@ function blkdevConf
         done < /tmp/labelswap
         ;;
 
-      (8.6 | blkdevResume)
-        step="8.6 blkdevResume";
+      ($blkdevResume | blkdevResume)
+        step="$blkdevResume blkdevResume";
         note "Change resume to use swap label not the uuid ...";
 
         DoOrDie CopyToKeep /etc/initramfs-tools/conf.d/resume;
@@ -132,8 +163,8 @@ function blkdevConf
         DoOrDie sudo update-initramfs -u;
         ;;
 
-      (8.7 | blkdevFstab)
-        step="8.7 blkdevFstab";
+      ($blkdevFstab | blkdevFstab)
+        step="$blkdevFstab blkdevFstab";
         note "Change fstab to use labels not the uuids ...";
 
         DoOrDie CopyToKeep /etc/fstab;
@@ -169,20 +200,21 @@ function blkdevConf
         cat /etc/fstab;
         ;;
 
-      (8.8 | blkdevRaid)
-        step="8.8 blkdevRaid";
+      ($blkdevRaid | blkdevRaid)
+        step="$blkdevRaid blkdevRaid";
         note "Backup the RAID configuration ...";
 
         DoOrDie CopyToKeep /etc/mdadm/mdadm.conf;
         ;;
 
-      (8.99)
-        step="8.99 sanityCheck";
+      ($major.99)
+        step="$major.99 sanityCheck";
         note "Checking blkdev ...";
-        listLoggedSteps ${1%.*} | while read step name status; do
+        listLoggedSteps $major | while read step name status; do
             printf "%-7s %-23s %s\n" $step $name $status;
             case "$installDist $name" in
               (*blkdevInstallTools)
+                CheckCurrent /etc/{passwd,group};
                 ;;
               (*blkdevMedia)
                 (cd /media && ls -ld fd* cd* dvd* usb*) 2> /dev/null;
@@ -213,7 +245,7 @@ function blkdevConf
 
       (*)
         badOption "$1";
-        listOptions 8 blkdev;
+        listOptions sysconf-blkdev $major;
         quit 1;
         ;;
     esac

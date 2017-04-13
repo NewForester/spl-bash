@@ -214,7 +214,7 @@ case "$1" in
 
   (8*  | blkdev*)
     source sysconf-blkdev;
-    blkdevConf "$@";
+    blkdevConf 8 "$@";
     ;;
 
   (7*  | udev*)
