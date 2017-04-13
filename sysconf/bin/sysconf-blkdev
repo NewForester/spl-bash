@@ -119,17 +119,21 @@ function blkdevConf
 
         DoOrDie sudo mount -a;
 
-        if [[ -b /dev/md5 ]]; then
-            if ! ls -l /dev/mapper | fgrep -q fstab_opt; then
-                DoOrDie sudo ~/bin/volume create fstab opt 2G;
+        if [[ "${installDist}" == "devuan" ]]; then
+            createLogicalVolume "${installDist}" opt 2G;
+            createVolumeMountPoint /opt root:sudo g+w;
+        else
+            if [[ -b /dev/md5 ]]; then
+                if ! ls -l /dev/mapper | fgrep -q fstab_opt; then
+                    createLogicalVolume fstab opt 2G;
+                fi
+                if ! mountpoint /opt > /dev/null; then
+                    DoOrDie sudo mount "/dev/mapper/${HOSTNAME}-fstab_opt" /opt;
+                fi
             fi
-            if ! mountpoint /opt > /dev/null; then
-                DoOrDie sudo mount "/dev/mapper/${HOSTNAME}-fstab_opt" /opt;
-            fi
+            DoOrDie sudo chown root:sudo /opt;
+            DoOrDie sudo chmod g+w /opt;
         fi
-
-        DoOrDie sudo chown root:sudo /opt;
-        DoOrDie sudo chmod g+w /opt;
         ;;
 
       ($blkdevLabels | blkdevLabels)
@@ -226,6 +230,8 @@ function blkdevConf
                 (DoOrDie ls -ld /media/fd* /media/cd* /media/dvd* /media/usb* 2> /dev/null);
                 ;;
               (*blkdevOpt)
+                (DoOrDie ls -ld /opt);
+                (DoOrDie fgrep /opt /etc/mtab);
                 ;;
               (*blkdevLabels)
                 (cd /dev/disk/by-label && ls -ld root home usr var opt);
