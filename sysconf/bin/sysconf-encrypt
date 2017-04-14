@@ -17,6 +17,9 @@ function defineSteps
     encryptInstall=$major.$minor;
 
     minor=$((minor+1));
+    encryptVolume=$major.$minor;
+
+    minor=$((minor+1));
     encryptConfigure=$major.$minor;
 
     minor=$((minor+1));
@@ -45,6 +48,15 @@ function encryptConf
         note "Install the cryptsetup package ...";
 
         installPackage cryptsetup;
+        ;;
+
+      ($encryptVolume | encryptVolume)
+        step="$encryptVolume encryptVolume";
+        note "Create the logical volume for encryption ...";
+
+        createLogicalVolume "${installDist}" crypt;
+        createVolumeMountPoint /crypt;
+        DoOrDie sudo umount /crypt;
         ;;
 
       ($encryptConfigure | encryptConfigure)
@@ -89,6 +101,10 @@ function encryptConf
             case "$installDist $name" in
               (*encryptInstall)
                 CheckCurrent /etc/{passwd,group};
+                ;;
+              (*encryptVolume)
+                (DoOrDie ls -ld /crypt);
+                (DoOrDie fgrep /crypt /etc/fstab);
                 ;;
               (*encryptConfigure)
                 CheckOriginal /etc/crypttab;
