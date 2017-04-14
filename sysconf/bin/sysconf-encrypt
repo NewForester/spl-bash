@@ -37,6 +37,8 @@ function encryptConf
     local major="$1"; shift;
     defineSteps $major;
 
+    local target source junk;
+
     case "$1" in
       ($major | encrypt)
         listOptions sysconf-encrypt "$1";
@@ -69,11 +71,19 @@ function encryptConf
 
       ($encryptCreate | encryptCreate)
         step="$encryptCreate encryptCreate";
-        note "Create the encrypted volume ...";
 
-        DoOrDie sudo cryptsetup --verbose --verify-passphrase luksFormat /dev/md0;
-        DoOrDie sudo cryptsetup luksOpen /dev/md0 md0_crypt;
-        DoOrDie sudo mkfs.ext3 -L crypt /dev/mapper/md0_crypt;
+        note "Create the encrypted volume(s) ...";
+
+        while read target source junk; do
+            [[ -z "$target" || "$target" == "#" ]] && continue;
+            [[ -b "/dev/mapper/${target}" ]] && continue;
+
+            DoOrDie sudo cryptsetup --verbose --verify-passphrase luksFormat "${source}";
+            DoOrDie sudo cryptsetup luksOpen "${source}" "${target}";
+            DoOrDie sudo mkfs.ext4 -L "${target}" "/dev/mapper/${target}";
+        done < /etc/crypttab
+
+        fini="run sysconf blkdevFstab before running the next step";
         ;;
 
       ($encryptMount | encryptMount)
