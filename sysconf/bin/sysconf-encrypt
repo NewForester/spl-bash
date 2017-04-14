@@ -8,33 +8,55 @@
 ##  NB:     The caller must source functions etc à la sysconf script.
 ##
 
-# do it
+function defineSteps
+{
+    local major="$1"; shift;
+    local minor=0;
+
+    minor=$((minor+1));
+    encryptInstall=$major.$minor;
+
+    minor=$((minor+1));
+    encryptConfigure=$major.$minor;
+
+    minor=$((minor+1));
+    encryptCreate=$major.$minor;
+
+    minor=$((minor+1));
+    encryptMount=$major.$minor;
+
+    minor=$((minor+1));
+    encryptUmount=$major.$minor;
+}
 
 function encryptConf
 {
+    local major="$1"; shift;
+    defineSteps $major;
+
     case "$1" in
-      (9 | encrypt)
-        listOptions 9 encrypt;
+      ($major | encrypt)
+        listOptions sysconf-encrypt "$1";
         quit;
         ;;
 
-      (9.1 | encryptInstall)
-        step="9.1 encryptInstall";
+      ($encryptInstall | encryptInstall)
+        step="$encryptInstall encryptInstall";
         note "Install the cryptsetup package ...";
 
         installPackage cryptsetup;
         ;;
 
-      (9.2 | encryptConfigure)
-        step="9.2 encryptConfigure";
+      ($encryptConfigure | encryptConfigure)
+        step="$encryptConfigure encryptConfigure";
         note "Configure the cryptsetup package ...";
 
         DoOrDie CopyToKeep /etc/crypttab;
         DoOrDie InstallOurOwn /etc/crypttab;
         ;;
 
-      (9.3 | encryptCreate)
-        step="9.3 encryptCreate";
+      ($encryptCreate | encryptCreate)
+        step="$encryptCreate encryptCreate";
         note "Create the encrypted volume ...";
 
         DoOrDie sudo cryptsetup --verbose --verify-passphrase luksFormat /dev/md0;
@@ -42,8 +64,8 @@ function encryptConf
         DoOrDie sudo mkfs.ext3 -L crypt /dev/mapper/md0_crypt;
         ;;
 
-      (9.4 | encryptMount)
-        step="9.4 encryptMount";
+      ($encryptMount | encryptMount)
+        step="$encryptMount encryptMount";
         note "Start and mount the encrypted volume ...";
 
         DoOrDie sudo service cryptdisks force-start;
@@ -51,20 +73,23 @@ function encryptConf
         DoOrDie mount /crypt;
         ;;
 
-      (9.5 | encryptUmount)
-        step="9.5 encryptUmount";
+      ($encryptUmount | encryptUmount)
+        step="$encryptUmount encryptUmount";
         note "Unmount and stop the encrypted volume ...";
 
         DoOrDie umount /crypt;
         DoOrDie sudo service cryptdisks stop;
         ;;
 
-      (9.99)
-        step="9.99 sanityCheck";
+      ($major.99)
+        step="$major.99 sanityCheck";
         note "Checking encrypt ...";
-        listLoggedSteps ${1%.*} | while read step name status; do
+        listLoggedSteps $major | while read step name status; do
             printf "%-7s %-23s %s\n" $step $name $status;
             case "$installDist $name" in
+              (*encryptInstall)
+                CheckCurrent /etc/{passwd,group};
+                ;;
               (*encryptConfigure)
                 CheckOriginal /etc/crypttab;
                 CheckOurOwn /etc/crypttab;
@@ -76,7 +101,7 @@ function encryptConf
 
       (*)
         badOption "$1";
-        listOptions 9 encrypt;
+        listOptions sysconf-encrypt $major;
         quit 1;
         ;;
     esac
