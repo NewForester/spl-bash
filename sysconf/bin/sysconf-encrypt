@@ -88,11 +88,15 @@ function encryptConf
 
       ($encryptMount | encryptMount)
         step="$encryptMount encryptMount";
-        note "Start and mount the encrypted volume ...";
+        note "Start and mount the encrypted volume(s) ...";
 
         DoOrDie sudo service cryptdisks force-start;
-        DoOrDie sudo mkdir -p /crypt;
-        DoOrDie mount /crypt;
+
+        while read target source junk; do
+            [[ -z "$target" || "$target" == "#" ]] && continue;
+
+            DoOrDie mount "/dev/mapper/${target}";
+        done < /etc/crypttab
         ;;
 
       ($encryptUmount | encryptUmount)
