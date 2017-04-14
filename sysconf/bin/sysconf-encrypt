@@ -101,9 +101,14 @@ function encryptConf
 
       ($encryptUmount | encryptUmount)
         step="$encryptUmount encryptUmount";
-        note "Unmount and stop the encrypted volume ...";
+        note "Unmount and stop the encrypted volume(s) ...";
 
-        DoOrDie umount /crypt;
+        while read target source junk; do
+            [[ -z "$target" || "$target" == "#" ]] && continue;
+
+            DoOrDie umount "/dev/mapper/${target}";
+        done < /etc/crypttab
+
         DoOrDie sudo service cryptdisks stop;
         ;;
 
