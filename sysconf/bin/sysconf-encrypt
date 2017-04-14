@@ -61,7 +61,7 @@ function encryptConf
 
       ($encryptConfigure | encryptConfigure)
         step="$encryptConfigure encryptConfigure";
-        note "Configure the cryptsetup package ...";
+        note "Create /etc/crypttab ...";
 
         DoOrDie CopyToKeep /etc/crypttab;
         DoOrDie InstallOurOwn /etc/crypttab;
