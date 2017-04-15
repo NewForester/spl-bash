@@ -36,6 +36,9 @@ function defineSteps
 #     netWifi=$major.$minor;
 
     minor=$((minor+1));
+    netBridgeInstall=$major.$minor;
+
+    minor=$((minor+1));
     netInterfaces=$major.$minor;
 }
 
@@ -178,10 +181,18 @@ function netConf
 #         DoOrDie sudo ifup wlan0;
 #         ;;
 
+      ($netBridgeInstall | netBridgeInstall)
+        step="$netBridgeInstall netBridgeInstall";
+        note "Install utilities need for bridged network operation ...";
+
+        installPackage bridge-utils;
+        ;;
+
       ($netInterfaces | netInterfaces)
         step="$netInterfaces netInterfaces";
         note "Configure network interfaces ...";
 
+        DoOrDie CopyToKeep /etc/network/interfaces;
         DoOrDie InstallOurOwn /etc/network/interfaces;
 
         while read junk file; do
@@ -231,7 +242,7 @@ function netConf
                 local file;
                 for file in $(ls /etc/wicd/*-settings.conf 2> /dev/null); do
                     if [[ -e "keep/${file}" ]]; then
-                        DoOrDieLocal sudo inisort "${file}" '|' sudo diff - "keep${file}";
+                        (DoOrDieLocal sudo inisort "${file}" '|' sudo diff - "keep${file}");
                     else
                         error "keep/${file}" missing;
                     fi
@@ -241,6 +252,9 @@ function netConf
 #                 CheckOriginal /etc/network/interfaces;
 #                 CheckOurOwn /etc/default/NetworkManager;
 #                 ;;
+              (*netBridgeInstall)
+                CheckCurrent /etc/{group,passwd};
+                ;;
               (*netInterfaces)
                 CheckOurOwn /etc/network/interfaces;
                 while read junk file; do
