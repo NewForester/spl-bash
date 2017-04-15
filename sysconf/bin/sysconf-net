@@ -20,20 +20,20 @@ function defineSteps
     netWicdDesktop=$major.$minor.D;
     netWicdLaptop=$major.$minor.L;
 
-    minor=$((minor+1));
-    netNetworkManager=$major.$minor;
+#     minor=$((minor+1));
+#     netNetworkManager=$major.$minor;
 
-    minor=$((minor+1));
-    netLoopback=$major.$minor;
+#     minor=$((minor+1));
+#     netLoopback=$major.$minor;
 
-    minor=$((minor+1));
-    netWired=$major.$minor;
+#     minor=$((minor+1));
+#     netWired=$major.$minor;
 
-    minor=$((minor+1));
-    netBridged=$major.$minor;
+#     minor=$((minor+1));
+#     netBridged=$major.$minor;
 
-    minor=$((minor+1));
-    netWifi=$major.$minor;
+#     minor=$((minor+1));
+#     netWifi=$major.$minor;
 
     minor=$((minor+1));
     netInterfaces=$major.$minor;
@@ -56,14 +56,14 @@ function netConf
         step="$netWicdInstall netWicdInstall";
         note "Install wicd ...";
 
-        if [[ -h /etc/resolv.conf ]]; then
-           # Fix ubuntu brain death
-           local link=$(ls -ld /etc/resolv.conf | sed -e "s/.*-> //");
-           if [[ "${link:0:2}" == ".." ]]; then
-                DoOrDie sudo rm /etc/resolv.conf;
-                DoOrDie sudo ln -s ${link:2} /etc/resolv.conf;
-           fi
-        fi
+#         if [[ -h /etc/resolv.conf ]]; then
+#            # Fix ubuntu brain death
+#            local link=$(ls -ld /etc/resolv.conf | sed -e "s/.*-> //");
+#            if [[ "${link:0:2}" == ".." ]]; then
+#                 DoOrDie sudo rm /etc/resolv.conf;
+#                 DoOrDie sudo ln -s ${link:2} /etc/resolv.conf;
+#            fi
+#         fi
 
         installPackage wicd;
         ;;
@@ -96,87 +96,87 @@ function netConf
         DoOrDie sudo service wicd start;
        ;;
 
-      ($netNetworkManager | netNetworkManager)
-        step="$netNetworkManager netNetworkManager";
-        note "Disable the network manager ...";
+#       ($netNetworkManager | netNetworkManager)
+#         step="$netNetworkManager netNetworkManager";
+#         note "Disable the network manager ...";
+#
+#         echo "... backup original interfaces";
+#         if [[ -e /etc/network/interfaces.bak-0 ]]; then
+#             DoOrDie sudo mv /etc/network/interfaces{.bak-0,};   # undo brain death
+#         fi
+#
+#         DoOrDie CopyToKeep /etc/network/interfaces;
+#         DoOrDie chmod 600 "keep/etc/network/interfaces.${RELEASE}";
+#
+#         if [[ -e /etc/init.d/network-manager ]]; then
+#             echo "... nobble the NetworkManager";
+#             DoOrDie InstallOurOwn /etc/default/NetworkManager;
+#             DoOrDie sudo service network-manager stop;
+#         fi
+#
+#         fini="you really should reboot at this point"
+#         ;;
 
-        echo "... backup original interfaces";
-        if [[ -e /etc/network/interfaces.bak-0 ]]; then
-            DoOrDie sudo mv /etc/network/interfaces{.bak-0,};   # undo brain death
-        fi
+#       ($netLoopback | netLoopback)
+#         step="$netLoopback netLoopback";
+#         note "Configure only loopback network ...";
+#
+#         DoOrDie InstallOurOwn /etc/network/interfaces.lo;
+#
+#         DoOrDie sudo ln -sf interfaces.lo /etc/network/interfaces;
+#         ;;
 
-        DoOrDie CopyToKeep /etc/network/interfaces;
-        DoOrDie chmod 600 "keep/etc/network/interfaces.${RELEASE}";
+#       ($netWired | netWired)
+#         step="$netWired netWired";
+#         note "Configure wired network operation ...";
+#
+#         DoOrDie InstallOurOwn /etc/network/interfaces.eth0;
+#
+#         local if0;
+#         for if0 in br0 eth0 wlan0; do
+#             fgrep -q ${if0} /etc/network/run/ifstate && DoOrDie sudo ifdown ${if0};
+#         done
+#
+#         DoOrDie sudo ln -sf interfaces.eth0 /etc/network/interfaces;
+#         DoOrDie sudo ifup eth0;
+#         ;;
 
-        if [[ -e /etc/init.d/network-manager ]]; then
-            echo "... nobble the NetworkManager";
-            DoOrDie InstallOurOwn /etc/default/NetworkManager;
-            DoOrDie sudo service network-manager stop;
-        fi
+#       ($netBridged | netBridged)
+#         step="$netBridged netBridged";
+#         note "Configure bridged network operation ...";
+#
+#         DoOrDie InstallOurOwn /etc/network/interfaces.br0;
+#
+#         local if0;
+#         for if0 in br0 eth0 wlan0; do
+#             fgrep -q ${if0} /etc/network/run/ifstate && DoOrDie sudo ifdown ${if0};
+#         done
+#
+#         DoOrDie sudo ln -sf interfaces.br0 /etc/network/interfaces;
+#         DoOrDie sudo ifup br0;
+#         ;;
 
-        fini="you really should reboot at this point"
-        ;;
-
-      ($netLoopback | netLoopback)
-        step="$netLoopback netLoopback";
-        note "Configure only loopback network ...";
-
-        DoOrDie InstallOurOwn /etc/network/interfaces.lo;
-
-        DoOrDie sudo ln -sf interfaces.lo /etc/network/interfaces;
-        ;;
-
-      ($netWired | netWired)
-        step="$netWired netWired";
-        note "Configure wired network operation ...";
-
-        DoOrDie InstallOurOwn /etc/network/interfaces.eth0;
-
-        local if0;
-        for if0 in br0 eth0 wlan0; do
-            fgrep -q ${if0} /etc/network/run/ifstate && DoOrDie sudo ifdown ${if0};
-        done
-
-        DoOrDie sudo ln -sf interfaces.eth0 /etc/network/interfaces;
-        DoOrDie sudo ifup eth0;
-        ;;
-
-      ($netBridged | netBridged)
-        step="$netBridged netBridged";
-        note "Configure bridged network operation ...";
-
-        DoOrDie InstallOurOwn /etc/network/interfaces.br0;
-
-        local if0;
-        for if0 in br0 eth0 wlan0; do
-            fgrep -q ${if0} /etc/network/run/ifstate && DoOrDie sudo ifdown ${if0};
-        done
-
-        DoOrDie sudo ln -sf interfaces.br0 /etc/network/interfaces;
-        DoOrDie sudo ifup br0;
-        ;;
-
-      ($netWifi | netWifi)
-        step="$netWifi netWifi";
-        note "Configure /etc/network/interfaces for WIFI ...";
-
-        DoOrDie InstallOurOwn /etc/network/interfaces.wifi;
-        DoOrDie InstallOurOwn /etc/network/wifi-map;
-
-        while read junk file; do
-            [[ "${junk}" != "source" ]] && continue;
-
-            DoOrDie InstallOurOwn "/etc/network/${file}";
-        done < keep/etc/network/interfaces.wifi
-
-        local if0;
-        for if0 in br0 eth0 wlan0; do
-            fgrep -q ${if0} /etc/network/run/ifstate && DoOrDie sudo ifdown ${if0};
-        done
-
-        DoOrDie sudo ln -sf interfaces.wifi /etc/network/interfaces;
-        DoOrDie sudo ifup wlan0;
-        ;;
+#       ($netWifi | netWifi)
+#         step="$netWifi netWifi";
+#         note "Configure /etc/network/interfaces for WIFI ...";
+#
+#         DoOrDie InstallOurOwn /etc/network/interfaces.wifi;
+#         DoOrDie InstallOurOwn /etc/network/wifi-map;
+#
+#         while read junk file; do
+#             [[ "${junk}" != "source" ]] && continue;
+#
+#             DoOrDie InstallOurOwn /etc/network/${file};
+#         done < keep/etc/network/interfaces.wifi
+#
+#         local if0;
+#         for if0 in br0 eth0 wlan0; do
+#             fgrep -q ${if0} /etc/network/run/ifstate && DoOrDie sudo ifdown ${if0};
+#         done
+#
+#         DoOrDie sudo ln -sf interfaces.wifi /etc/network/interfaces;
+#         DoOrDie sudo ifup wlan0;
+#         ;;
 
       ($netInterfaces | netInterfaces)
         step="$netInterfaces netInterfaces";
@@ -237,10 +237,10 @@ function netConf
                     fi
                 done
                 ;;
-              (*netNetworkManager)
-                CheckOriginal /etc/network/interfaces;
-                CheckOurOwn /etc/default/NetworkManager;
-                ;;
+#               (*netNetworkManager)
+#                 CheckOriginal /etc/network/interfaces;
+#                 CheckOurOwn /etc/default/NetworkManager;
+#                 ;;
               (*netInterfaces)
                 CheckOurOwn /etc/network/interfaces;
                 while read junk file; do
