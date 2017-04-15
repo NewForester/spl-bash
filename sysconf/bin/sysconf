@@ -199,7 +199,7 @@ case "$1" in
 
   (10*  | net*)
     source sysconf-net;
-    netConf "$@";
+    netConf 10 "$@";
     ;;
 
   (1[0-9]*)

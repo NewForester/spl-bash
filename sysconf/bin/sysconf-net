@@ -8,20 +8,52 @@
 ##  NB:     The caller must source functions etc à la sysconf script.
 ##
 
-# do it
+function defineSteps
+{
+    local major="$1"; shift;
+    local minor=0;
+
+    minor=$((minor+1));
+    netWicdInstall=$major.$minor;
+
+    minor=$((minor+1));
+    netWicdDesktop=$major.$minor.D;
+    netWicdLaptop=$major.$minor.L;
+
+    minor=$((minor+1));
+    netNetworkManager=$major.$minor;
+
+    minor=$((minor+1));
+    netLoopback=$major.$minor;
+
+    minor=$((minor+1));
+    netWired=$major.$minor;
+
+    minor=$((minor+1));
+    netBridged=$major.$minor;
+
+    minor=$((minor+1));
+    netWifi=$major.$minor;
+
+    minor=$((minor+1));
+    netInterfaces=$major.$minor;
+}
 
 function netConf
 {
+    local major="$1"; shift;
+    defineSteps $major;
+
     local junk file needmap;
 
     case "$1" in
-      (10 | net)
-        listOptions 10 net;
+      ($major | net)
+        listOptions sysconf-net "$1";
         quit;
         ;;
 
-      (10.1 | netWicdInstall)
-        step="10.1 netWicdInstall";
+      ($netWicdInstall | netWicdInstall)
+        step="$netWicdInstall netWicdInstall";
         note "Install wicd ...";
 
         if [[ -h /etc/resolv.conf ]]; then
@@ -36,8 +68,8 @@ function netConf
         installPackage wicd;
         ;;
 
-      (10.1.D | netWicdDesktop)
-        step="10.1.D netWicdDesktop";
+      ($netWicdDesktop | netWicdDesktop)
+        step="$netWicdDesktop netWicdDesktop";
         note "Configure wicd for desktop operation ...";
 
         for file in $(ls /etc/wicd/*-settings.conf 2> /dev/null); do
@@ -50,8 +82,8 @@ function netConf
         DoOrDie sudo service wicd start;
        ;;
 
-      (10.1.L | netWicdLaptop)
-        step="10.1.L netWicdLaptop";
+      ($netWicdLaptop | netWicdLaptop)
+        step="$netWicdLaptop netWicdLaptop";
         note "Configure wicd for laptop operation ...";
 
         for file in $(ls /etc/wicd/*-settings.conf 2> /dev/null); do
@@ -64,8 +96,8 @@ function netConf
         DoOrDie sudo service wicd start;
        ;;
 
-      (10.2 | netNetworkManager)
-        step="10.2 netNetworkManager";
+      ($netNetworkManager | netNetworkManager)
+        step="$netNetworkManager netNetworkManager";
         note "Disable the network manager ...";
 
         echo "... backup original interfaces";
@@ -85,8 +117,8 @@ function netConf
         fini="you really should reboot at this point"
         ;;
 
-      (10.3 | netLoopback)
-        step="10.3 netLoopback";
+      ($netLoopback | netLoopback)
+        step="$netLoopback netLoopback";
         note "Configure only loopback network ...";
 
         DoOrDie InstallOurOwn /etc/network/interfaces.lo;
@@ -94,8 +126,8 @@ function netConf
         DoOrDie sudo ln -sf interfaces.lo /etc/network/interfaces;
         ;;
 
-      (10.4 | netWired)
-        step="10.4 netWired";
+      ($netWired | netWired)
+        step="$netWired netWired";
         note "Configure wired network operation ...";
 
         DoOrDie InstallOurOwn /etc/network/interfaces.eth0;
@@ -109,8 +141,8 @@ function netConf
         DoOrDie sudo ifup eth0;
         ;;
 
-      (10.4.B | netBridged)
-        step="10.4.B netBridged";
+      ($netBridged | netBridged)
+        step="$netBridged netBridged";
         note "Configure bridged network operation ...";
 
         DoOrDie InstallOurOwn /etc/network/interfaces.br0;
@@ -124,8 +156,8 @@ function netConf
         DoOrDie sudo ifup br0;
         ;;
 
-      (10.5 | netWifi)
-        step="10.5 netWifi";
+      ($netWifi | netWifi)
+        step="$netWifi netWifi";
         note "Configure /etc/network/interfaces for WIFI ...";
 
         DoOrDie InstallOurOwn /etc/network/interfaces.wifi;
@@ -146,8 +178,8 @@ function netConf
         DoOrDie sudo ifup wlan0;
         ;;
 
-      (10.6 | netInterfaces)
-        step="10.6 netInterfaces";
+      ($netInterfaces | netInterfaces)
+        step="$netInterfaces netInterfaces";
         note "Configure network interfaces ...";
 
         DoOrDie InstallOurOwn /etc/network/interfaces;
@@ -185,12 +217,15 @@ function netConf
         fini="you may need to adjust you wicd configuration to use br0 instead of eth0"
         ;;
 
-      (10.99)
-        step="10.99 sanityCheck";
+      ($major.99)
+        step="$major.99 sanityCheck";
         note "Checking net ...";
-        listLoggedSteps ${1%.*} | while read step name status; do
+        listLoggedSteps $major | while read step name status; do
             printf "%-7s %-23s %s\n" $step $name $status;
             case "$installDist $name" in
+              (*netWicdInstall)
+                CheckCurrent /etc/{group,passwd};
+                ;;
               (*netWicdDesktop | *netWicdLaptop)
                 CheckOriginal --sudo /etc/wicd/*-settings.conf;
                 local file;
@@ -232,7 +267,7 @@ function netConf
 
       (*)
         badOption "$1";
-        listOptions 10 net;
+        listOptions sysconf-net $major;
         quit 1;
         ;;
     esac
