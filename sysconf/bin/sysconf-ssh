@@ -8,26 +8,56 @@
 ##  NB:     The caller must source functions etc à la sysconf script.
 ##
 
-# do it
+function defineSteps
+{
+    local major="$1"; shift;
+    local minor=0;
+
+    minor=$((minor+1));
+    sshInstall=$major.$minor;
+
+    minor=$((minor+1));
+    sshConfigure=$major.$minor;
+
+    minor=$((minor+1));
+    sshKeys=$major.$minor;
+
+    minor=$((minor+1));
+    rsyncInstall=$major.$minor;
+
+    minor=$((minor+1));
+    rsyncConfigure=$major.$minor;
+
+    minor=$((minor+1));
+    rshNetkitClient=$major.$minor.C;
+    rshNetkitServer=$major.$minor.S;
+
+    minor=$((minor+1));
+    rshRedoneClient=$major.$minor.C;
+    rshRedoneServer=$major.$minor.S;
+}
 
 function sshConf
 {
+    local major="$1"; shift;
+    defineSteps $major;
+
     case "$1" in
-      (11 | ssh)
-        listOptions 11 ssh;
+      ($major | ssh | rsync | rsh)
+        listOptions sysconf-ssh "$1";
         quit;
         ;;
 
-      (11.1 | sshInstall)
-        step="11.1 sshInstall";
+      ($sshInstall | sshInstall)
+        step="${sshInstall} sshInstall";
         note "Install ntp and ssh and rsync packages ...";
 
         installPackage ntp openssh-client openssh-server rsync;
         DoOrDie SaveCurrent /etc/{group,passwd};
         ;;
 
-      (11.2 | sshConfigure)
-        step="11.2 sshConfigure";
+      ($sshConfigure | sshConfigure)
+        step="${sshConfigure} sshConfigure";
         note "Configure ssh access ...";
 
         echo "... patch client and server configuration files";
@@ -47,8 +77,8 @@ function sshConf
         DoOrDie sudo service ssh start;
         ;;
 
-      (11.3 | sshKeys)
-        step="11.3 sshKeys";
+      ($sshKeys | sshKeys)
+        step="${sshKeys} sshKeys";
         note "Restore and backup ssh keys ...";
 
         local keep="keep/etc/ssh";
@@ -73,15 +103,15 @@ function sshConf
         DoOrDie sudo cp -p ${keep}/*_key ${master};
         ;;
 
-      (11.4 | rsyncInstall)
-        step="11.4 rsyncInstall";
+      ($rsyncInstall | rsyncInstall)
+        step="${rsyncInstall} rsyncInstall";
         note "Install rsync and inetd ...";
 
         installPackage openbsd-inetd rsync;
         ;;
 
-      (11.5 | rsyncConfigure)
-        step="11.5 rsyncConfigure";
+      ($rsyncConfigure | rsyncConfigure)
+        step="${rsyncConfigure} rsyncConfigure";
         note "Configure the rsync daemon and inetd ...";
 
         echo "... configure inetd to run rsyncd";
@@ -93,40 +123,43 @@ function sshConf
         DoOrDie InstallOurOwn /etc/rsyncd.conf;
         ;;
 
-      (11.6.C | rshNetkitClient)
-        step="11.6.C rshNetkitClient";
+      ($rshNetkitClient | rshNetkitClient)
+        step="${rshNetkitClient} rshNetkitClient";
         note "Install net-kit rsh client ...";
 
         replacePackage rsh-redone-client rsh-client;
         ;;
 
-      (11.6.S | rshNetkitServer)
-        step="11.6.S rshNetkitServer";
+      ($rshNetkitServer | rshNetkitServer)
+        step="${rshNetkitServer} rshNetkitServer";
         note "Install net-kit rsh server ...";
 
         replacePackage rsh-redone-server rsh-server;
         ;;
 
-      (11.7.C | rshRedoneClient)
-        step="11.7.C rshRedoneClient";
+      ($rshRedoneClient | rshRedoneClient)
+        step="${rshRedoneClient} rshRedoneClient";
         note "Install rsh redone client ...";
 
         replacePackage rsh-client rsh-redone-client;
         ;;
 
-      (11.7.S | rshRedoneServer)
-        step="11.7.S rshRedoneServer";
+      ($rshRedoneServer | rshRedoneServer)
+        step="${rshRedoneServer} rshRedoneServer";
         note "Install rsh redone server ...";
 
         replacePackage rsh-server rsh-redone-server;
         ;;
 
-      (11.99)
-        step="11.99 sanityCheck";
+      ($major.99)
+        step="$major.99 sanityCheck";
         note "Checking ssh ...";
-        listLoggedSteps ${1%.*} | while read step name status; do
+        listLoggedSteps $major | while read step name status; do
             printf "%-7s %-23s %s\n" $step $name $status;
             case "$installDist $name" in
+              (*sshInstall)
+                CheckCurrent /etc/{group,passwd};
+                ;;
               (*sshConfigure)
                 CheckOriginal /etc/ssh/{ssh_config,sshd_config};
                 CheckPatch /etc/ssh/{ssh_config,sshd_config};
@@ -138,9 +171,18 @@ function sshConf
                 CheckOurOwn --sudo /etc/ssh/ssh_host_*key;
                 CheckOurOwn /etc/ssh/ssh_host_*key.pub;
                 ;;
+              (*rsyncInstall)
+                CheckCurrent /etc/{group,passwd};
+                ;;
               (*rsyncConfigure)
                 CheckOriginal /etc/inetd.conf;
                 CheckOurOwn /etc/rsyncd.conf;
+                ;;
+              (*rshNetkitClient | *rshNetkitServer)
+                CheckCurrent /etc/{group,passwd};
+                ;;
+              (*rshRedoneClient | *rshRedoneServer)
+                CheckCurrent /etc/{group,passwd};
                 ;;
             esac
         done
@@ -149,7 +191,7 @@ function sshConf
 
       (*)
         badOption "$1";
-        listOptions 11 ssh;
+        listOptions sysconf-ssh $major;
         quit 1;
         ;;
     esac
