@@ -23,6 +23,9 @@ function defineSteps
     sshKeys=$major.$minor;
 
     minor=$((minor+1));
+    sshKnownHosts=$major.$minor;
+
+    minor=$((minor+1));
     rsyncInstall=$major.$minor;
 
     minor=$((minor+1));
@@ -101,6 +104,32 @@ function sshConf
 
         DoOrDie cp -p ${keep}/*_key.pub ${master};
         DoOrDie sudo cp -p ${keep}/*_key ${master};
+        ;;
+
+      ($sshKnownHosts | sshKnownHosts)
+        step="${sshKnownHosts} sshKnownHosts";
+        note "Update known_hosts with new host key ...";
+
+        cd keep/etc/ssh > /dev/null;
+
+            local master="${installShare}/${0##*/}/etc/ssh";
+            local hostIp=$(awk "/${HOSTNAME}/"'{ print $1 }' /etc/hosts);
+
+            DoOrDie cp -p ssh_host_ecdsa_key.pub "${HOSTNAME}_key.pub";
+            DoOrDie sed -i "${HOSTNAME}_key.pub" -e "'s/^/${HOSTNAME},${hostIp} /'" -e "'s/ root@${HOSTNAME}\$//'";
+
+            DoOrDie mv -f ssh_known_hosts ssh_known_hosts.new;
+            DoOrDie sed -i ssh_known_hosts.new -e "'/${HOSTNAME}/d'" -e "'/^\$/d'";
+            DoOrDie sed -i ssh_known_hosts.new -e "'\$r ${HOSTNAME}_key.pub'";
+            DoOrDie sort -o ssh_known_hosts -t . -n -k 4 ssh_known_hosts.new;
+
+            DoOrDie rm -f "${HOSTNAME}_key.pub" ssh_known_hosts.new;
+
+            DoOrDie cp -p ssh_known_hosts "${master}";
+
+        cd - > /dev/null;
+
+        DoOrDie Deploy /etc/ssh/ssh_known_hosts;
         ;;
 
       ($rsyncInstall | rsyncInstall)
