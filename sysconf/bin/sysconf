@@ -189,7 +189,7 @@ case "$1" in
 
   (12* | nfs*)
     source sysconf-nfs;
-    nfsConf "$@";
+    nfsConf 12 "$@";
     ;;
 
   (11* | ssh* | rsync* | rsh*)
