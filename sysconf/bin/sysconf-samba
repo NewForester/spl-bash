@@ -252,8 +252,8 @@ function sambaConf
                 CheckMaster /etc/samba/smb.conf.{patch,shares};
                 ;;
               (*sambaPasswords)
-                CheckOriginal --sudo /var/lib/samba/passdb.tdb;
-                CheckOurOwn --sudo /var/lib/samba/passdb.tdb;
+                CheckOriginal --sudo /var/lib/samba/private/passdb.tdb;
+                CheckOurOwn --sudo /var/lib/samba/private/passdb.tdb;
                 ;;
               (*sambaConfInstall | *sambaConfUpdate | *sambaConfPatch | *sambaConfShare)
                 CheckDeployed /etc/samba/smb.conf;
