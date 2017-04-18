@@ -184,7 +184,7 @@ case "$1" in
 
   (13* | samba*)
     source sysconf-samba;
-    sambaConf "$@";
+    sambaConf 13 "$@";
     ;;
 
   (12* | nfs*)

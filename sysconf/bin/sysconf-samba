@@ -8,7 +8,26 @@
 ##  NB:     The caller must source functions etc à la sysconf script.
 ##
 
-# do it
+function defineSteps
+{
+    local major="$1"; shift;
+    local minor=0;
+
+    minor=$((minor+1));
+    sambaInstall=$major.$minor;
+
+    minor=$((minor+1));
+    sambaConfigure=$major.$minor;
+
+    minor=$((minor+1));
+    sambaPasswords=$major.$minor;
+
+    minor=$((minor+1));
+    sambaConfInstall=$major.$minor.I;
+    sambaConfUpdate=$major.$minor.U;
+    sambaConfPatch=$major.$minor.P;
+    sambaConfShare=$major.$minor.S;
+}
 
 function smbUpdate
 {
@@ -121,14 +140,17 @@ function updateRelease
 
 function sambaConf
 {
+    local major="$1"; shift;
+    defineSteps $major;
+
     case "$1" in
-      (13 | samba)
-        listOptions 13 samba;
+      ($major | samba)
+        listOptions sysconf-samba "$1";
         quit;
         ;;
 
-      (13.1 | sambaInstall)
-        step="13.1 sambaInstall";
+      ($sambaInstall | sambaInstall)
+        step="$sambaInstall sambaInstall";
         note "Install samba packages ...";
 
         installPackage samba-common smbclient samba cifs-utils;
@@ -136,8 +158,8 @@ function sambaConf
         DoOrDie SaveCurrent /etc/group;
         ;;
 
-      (13.2 | sambaConfigure)
-        step="13.2 sambaConfigure";
+      ($sambaConfigure | sambaConfigure)
+        step="$sambaConfigure sambaConfigure";
         note "Configure samba ...";
 
         echo "... install lmhosts";
@@ -180,49 +202,50 @@ function sambaConf
         cd - > /dev/null;
         ;;
 
-      (13.3 | sambaPasswords)
-        step="13.3 sambaPasswords";
+      ($sambaPasswords | sambaPasswords)
+        step="$sambaPasswords sambaPasswords";
         note "Create samba password (tdbsam) database ...";
 
         CopyToKeep --sudo /var/lib/samba/passdb.tdb;
         InstallOurOwn --sudo /var/lib/samba/passdb.tdb;
         ;;
 
-      (13.4.I | sambaConfInstall)
-        step="13.4.I sambaConfInstall";
+      ($sambaConfInstall | sambaConfInstall)
+        step="$sambaConfInstall sambaConfInstall";
         note "Generate samba configuration for new installation ...";
 
         smbUpdate "install";
         ;;
 
-      (13.4.U | sambaConfUpdate)
-        step="13.4.U sambaConfUpdate";
+      ($sambaConfUpdate | sambaConfUpdate)
+        step="$sambaConfUpdate sambaConfUpdate";
         note "Regenerate samba configuration after package upgrade ...";
 
         smbUpdate "update";
         ;;
 
-      (13.4.P | sambaConfPatch)
-        step="13.4.P sambaConfPatch";
+      ($sambaConfPatch | sambaConfPatch)
+        step="$sambaConfPatch sambaConfPatch";
         note "Regenerate samba configuration after patch change ...";
 
         smbUpdate "patch";
         ;;
 
-      (13.4.S | sambaConfShare)
-        step="13.4.S sambaConfShare";
+      ($sambaConfShare | sambaConfShare)
+        step="$sambaConfShare sambaConfShare";
         note "Regenerate samba configuration after share change ...";
 
         smbUpdate "share";
         ;;
 
-      (13.99)
-        step="13.99 sanityCheck";
+      ($major.99)
+        step="$major.99 sanityCheck";
         note "Checking samba ...";
-        listLoggedSteps ${1%.*} | while read step name status; do
+        listLoggedSteps $major | while read step name status; do
             printf "%-7s %-23s %s\n" $step $name $status;
             case "$installDist $name" in
               (*sambaInstall)
+                CheckCurrent /etc/{group,passwd};
                 ;;
               (*sambaConfigure)
                 CheckOurOwn /etc/samba/lmhosts;
@@ -242,7 +265,7 @@ function sambaConf
 
       (*)
         badOption "$1";
-        listOptions 13 samba;
+        listOptions sysconf-samba $major;
         quit 1;
         ;;
     esac
