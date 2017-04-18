@@ -63,6 +63,7 @@ function smbUpdate
 
         echo "... patch package maintainer's smb.conf ...";
         rm -f smb.conf.rej smb.conf.orig;
+        sed -i smb.conf -e 's/ *$//' -e 's/^   */    /' -e 's/^; +/;   /';
         patch < smb.conf.patch || exit 1;
         sed -i smb.conf -e "/workgroup =/d" -e "/server string =/d" || exit 1;
 
