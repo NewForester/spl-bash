@@ -47,27 +47,21 @@ function automounterConf
         DoOrDie InstallOurOwn /etc/auto.master.d/{net.autofs,automount.logical.volumes,nfs-servers-by-subnet};
 
         DoOrDie sudo service autofs stop;
-        fgrep -q "${installShare} " /etc/mtab && DoOrDie sudo umount "${installShare}";
 
         local list="share ";
         if [[ -e "/dev/${HOSTNAME##*-}" ]]; then
             list+="local ";
-            list+=$(ls -1 "/dev/${HOSTNAME##*-}" | sed -e 's/_.*//' | sort -u);
+            list+=$(ls -1 "/dev/${HOSTNAME##*-}" | sed -e "/${installDist}/d" -e 's/_.*//' | sort -u);
         else
             case "${HOSTNAME}" in
               (alder | holly | olive)
                 list+="win";
                 ;;
-              (pbr-wheezy)
-                list+="win";
-                ;;
             esac
         fi
+        createAutomounterGroups ${list};
 
-        local group;
-        for group in ${list}; do
-            DoOrDie sudo ~/bin/volume import ${group};
-        done
+        fgrep -q "${installShare} " /etc/mtab && DoOrDie sudo umount "${installShare}";
 
         DoOrDie sudo service autofs start;
 
@@ -87,7 +81,7 @@ function automounterConf
               (*automounterConfigure)
                 CheckOurOwn /etc/auto.master.d/{net.autofs,automount.logical.volumes,nfs-servers-by-subnet};
                 CheckOurOwn /etc/pm/sleep.d/30-flush-mounts;
-                (cd /etc/auto.master.d && ls -l auto.*);
+                (cd /etc/auto.master.d && DoOrDie ls -l auto.*);
                 ;;
             esac
         done
