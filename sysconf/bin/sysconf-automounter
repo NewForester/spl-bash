@@ -8,25 +8,38 @@
 ##  NB:     The caller must source functions etc à la sysconf script.
 ##
 
-# do it
+function defineSteps
+{
+    local major="$1"; shift;
+    local minor=0;
+
+    minor=$((minor+1));
+    automounterInstall=$major.$minor;
+
+    minor=$((minor+1));
+    automounterConfigure=$major.$minor;
+}
 
 function automounterConf
 {
+    local major="$1"; shift;
+    defineSteps $major;
+
     case "$1" in
-      (14 | automounter)
-        listOptions 14 automounter;
+      ($major | automounter)
+        listOptions sysconf-automounter "$1";
         quit;
         ;;
 
-      (14.1 | automounterInstall)
-        step="14.1 automounterInstall";
+      ($automounterInstall | automounterInstall)
+        step="$automounterInstall automounterInstall";
         note "Install the automounter ...";
 
         installPackage autofs;
         ;;
 
-      (14.2 | automounterConfigure)
-        step="14.2 automounterConfigure";
+      ($automounterConfigure | automounterConfigure)
+        step="$automounterConfigure automounterConfigure";
         note "Configure the autmounter ...";
 
         echo "... add our own maps and script";
@@ -62,12 +75,15 @@ function automounterConf
         DoOrDie InstallOurOwn /etc/pm/sleep.d/30-flush-mounts;
         ;;
 
-      (14.99)
-        step="14.99 sanityCheck";
+      ($major.99)
+        step="$major.99 sanityCheck";
         note "Checking automounter ...";
-        listLoggedSteps ${1%.*} | while read step name status; do
+        listLoggedSteps $major | while read step name status; do
             printf "%-7s %-23s %s\n" $step $name $status;
             case "$installDist $name" in
+              (*automounterInstall)
+                CheckCurrent /etc/{group,passwd};
+                ;;
               (*automounterConfigure)
                 CheckOurOwn /etc/auto.master.d/{net.autofs,automount.logical.volumes,nfs-servers-by-subnet};
                 CheckOurOwn /etc/pm/sleep.d/30-flush-mounts;
@@ -80,7 +96,7 @@ function automounterConf
 
       (*)
         badOption "$1";
-        listOptions 14 automounter;
+        listOptions sysconf-automounter $major;
         quit 1;
         ;;
     esac

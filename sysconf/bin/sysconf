@@ -179,7 +179,7 @@ case "$1" in
 
   (14* | automounter*)
     source sysconf-automounter;
-    automounterConf "$@";
+    automounterConf 14 "$@";
     ;;
 
   (13* | samba*)
