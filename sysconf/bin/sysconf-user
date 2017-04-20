@@ -23,14 +23,14 @@ function defineSteps
     userAdd=$major.$minor;
 
     minor=$((minor+1));
-    userMozilla=$major.$minor;
-
-    minor=$((minor+1));
     userSudoers=$major.$minor;
 
     minor=$((minor+1));
-    userMozillaExtensions=$major.$minor;
-    userMasterExtensions=$major.$minor.M;
+    mozillaAddonsInstall=$major.$minor;
+
+    minor=$((minor+1));
+    mozillaAddonsUpdate=$major.$minor;
+    mozillaAddonsSave=$major.$minor.S;
 }
 
 function userConf
@@ -39,7 +39,7 @@ function userConf
     defineSteps $major;
 
     case "$1" in
-      ($major | user)
+      ($major | user | mozilla)
         listOptions sysconf-user "$1";
         quit;
         ;;
@@ -114,9 +114,16 @@ function userConf
         DoOrDie SaveCurrent /etc/{group,passwd};
         ;;
 
-      ($userMozilla | userMozilla)
-        step="$userMozilla userMozilla";
-        note "Populate /home/mozilla for Mozilla applications ...";
+      ($userSudoers | userSudoers)
+        step="$userSudoers userSudoers";
+        note "Install sudoers files allowing specials privileges ...";
+
+        DoOrDie InstallOurOwn /etc/sudoers.d/backup;
+        ;;
+
+      ($mozillaAddonsInstall | mozillaAddonsInstall)
+        step="$mozillaAddonsInstall mozillaAddonsInstall";
+        note "Update Mozilla profile (extensions, adblockplus and plug-ins) ...";
 
         DoOrDie sudo rm -fr /home/mozilla/*;
         DoOrDie sudo chmod g+w /home/mozilla/;
@@ -128,16 +135,9 @@ function userConf
         done
         ;;
 
-      ($userSudoers | userSudoers)
-        step="$userSudoers userSudoers";
-        note "Install sudoers files allowing specials privileges ...";
-
-        DoOrDie InstallOurOwn /etc/sudoers.d/backup;
-        ;;
-
-      ($userMozillaExtensions | userMozillaExtensions)
-        step="$userMozillaExtensions userMozillaExtensions";
-        note "Update Mozilla extensions, adblockplus and plug-ins ...";
+      ($mozillaAddonsUpdate | mozillaAddonsUpdate)
+        step="$mozillaAddonsUpdate mozillaAddonsUpdate";
+        note "Update Mozilla profile (extensions, adblockplus and plug-ins) ...";
 
         local app;
         for app in firefox thunderbird; do
@@ -148,9 +148,9 @@ function userConf
         done
         ;;
 
-      ($userMasterExtensions | userMasterExtensions)
-        step="$userMasterExtensions userMasterExtensions";
-        note "Update master Mozilla profile (extensions, adblockplus etc.) ...";
+      ($mozillaAddonsSave | mozillaAddonsSave)
+        step="$mozillaAddonsSave mozillaAddonsSave";
+        note "Save Mozilla profile (extensions, adblockplus and plug-ins) ...";
 
         local app;
         for app in firefox thunderbird; do

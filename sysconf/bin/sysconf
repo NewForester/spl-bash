@@ -172,7 +172,7 @@ case "$1" in
     loginConf "$@";
     ;;
 
-  (15* | user*)
+  (15* | user* | mozilla*)
     source sysconf-user;
     userConf 15 "$@";
     ;;
