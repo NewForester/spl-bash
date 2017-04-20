@@ -174,7 +174,7 @@ case "$1" in
 
   (15* | user*)
     source sysconf-user;
-    userConf "$@";
+    userConf 15 "$@";
     ;;
 
   (14* | automounter*)

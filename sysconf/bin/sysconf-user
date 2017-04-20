@@ -8,26 +8,52 @@
 ##  NB:     The caller must source functions etc à la sysconf script.
 ##
 
-# do it
+function defineSteps
+{
+    local major="$1"; shift;
+    local minor=0;
+
+    minor=$((minor+1));
+    userConf=$major.$minor;
+
+    minor=$((minor+1));
+    userGroups=$major.$minor;
+
+    minor=$((minor+1));
+    userAdd=$major.$minor;
+
+    minor=$((minor+1));
+    userMozilla=$major.$minor;
+
+    minor=$((minor+1));
+    userSudoers=$major.$minor;
+
+    minor=$((minor+1));
+    userMozillaExtensions=$major.$minor;
+    userMasterExtensions=$major.$minor.M;
+}
 
 function userConf
 {
+    local major="$1"; shift;
+    defineSteps $major;
+
     case "$1" in
-      (15 | user)
-        listOptions 15 user;
+      ($major | user)
+        listOptions sysconf-user "$1";
         quit;
         ;;
 
-      (15.1 | userConf)
-        step="15.1 userConf";
+      ($userConf | userConf)
+        step="$userConf userConf";
         note "Backup and patch adduser.conf ...";
 
         DoOrDie CopyToKeep /etc/adduser.conf;
         DoOrDie ApplyPatch /etc/adduser.conf;
         ;;
 
-      (15.2 | userGroups)
-        step="15.2 userGroups";
+      ($userGroups | userGroups)
+        step="$userGroups userGroups";
         note "Create and destroy groups ...";
 
         DoOrDie SaveCurrent /etc/group;
@@ -45,8 +71,8 @@ function userConf
         DoOrDie SaveCurrent /etc/group;
         ;;
 
-      (15.3 | userAdd)
-        step="15.3 userAdd";
+      ($userAdd | userAdd)
+        step="$userAdd userAdd";
         note "Create additional users ...";
 
         DoOrDie SaveCurrent /etc/{group,passwd};
@@ -88,8 +114,8 @@ function userConf
         DoOrDie SaveCurrent /etc/{group,passwd};
         ;;
 
-      (15.4 | userMozilla)
-        step="15.4 userMozilla";
+      ($userMozilla | userMozilla)
+        step="$userMozilla userMozilla";
         note "Populate /home/mozilla for Mozilla applications ...";
 
         DoOrDie sudo rm -fr /home/mozilla/*;
@@ -102,15 +128,15 @@ function userConf
         done
         ;;
 
-      (15.5 | userSudoers)
-        step="15.5 userSudoers";
+      ($userSudoers | userSudoers)
+        step="$userSudoers userSudoers";
         note "Install sudoers files allowing specials privileges ...";
 
         DoOrDie InstallOurOwn /etc/sudoers.d/backup;
         ;;
 
-      (15.6 | userMozillaExtensions)
-        step="15.6 userMozillaExtensions";
+      ($userMozillaExtensions | userMozillaExtensions)
+        step="$userMozillaExtensions userMozillaExtensions";
         note "Update Mozilla extensions, adblockplus and plug-ins ...";
 
         local app;
@@ -122,8 +148,8 @@ function userConf
         done
         ;;
 
-      (15.6.M | userMasterExtensions)
-        step="15.6.M userMasterExtensions";
+      ($userMasterExtensions | userMasterExtensions)
+        step="$userMasterExtensions userMasterExtensions";
         note "Update master Mozilla profile (extensions, adblockplus etc.) ...";
 
         local app;
@@ -134,10 +160,10 @@ function userConf
         done
         ;;
 
-      (15.99)
-        step="15.99 sanityCheck";
+      ($major.99)
+        step="$major.99 sanityCheck";
         note "Checking user ...";
-        listLoggedSteps ${1%.*} | while read step name status; do
+        listLoggedSteps $major | while read step name status; do
             printf "%-7s %-23s %s\n" $step $name $status;
             case "$installDist $name" in
               (*userConf)
@@ -162,7 +188,7 @@ function userConf
 
       (*)
         badOption "$1";
-        listOptions 15 user;
+        listOptions sysconf-user $major;
         quit 1;
         ;;
     esac
