@@ -63,7 +63,7 @@ function userConf
         fgrep -q "philately:" /etc/group || DoOrDie sudo addgroup philately;
 
         echo "... adjust group membership for default user ...";
-        delUserFromGroups "${USER}" bluetooth dip plugdev scanner;
+        delUserFromGroups "${USER}" dip plugdev scanner;
 
         source /etc/adduser.conf;
         addUserToGroups "${USER}" adm ${EXTRA_GROUPS};
@@ -118,7 +118,7 @@ function userConf
         step="$userSudoers userSudoers";
         note "Install sudoers files allowing specials privileges ...";
 
-        DoOrDie InstallOurOwn /etc/sudoers.d/backup;
+        DoOrDie InstallOurOwn /etc/sudoers.d/{backup,volumes};
         ;;
 
       ($mozillaAddonsInstall | mozillaAddonsInstall)
@@ -141,9 +141,9 @@ function userConf
 
         local app;
         for app in firefox thunderbird; do
-            DoOrDie rsync -ax --delete "/media/share/linux/usrconf/${app}/profile" "/home/mozilla/${app}";
-            if [[ -d "/media/share/linux/usrconf/${app}/${HOSTNAME}" ]]; then
-                DoOrDie rsync -ax "/media/share/linux/usrconf/${app}/${HOSTNAME}/*" "/home/mozilla/${app}/profile";
+            DoOrDie rsync -ax --delete "${installShare}/usrconf/${app}/profile" "/home/mozilla/${app}";
+            if [[ -d "${installShare}/usrconf/${app}/${HOSTNAME}" ]]; then
+                DoOrDie rsync -ax "${installShare}/usrconf/${app}/${HOSTNAME}/*" "/home/mozilla/${app}/profile";
             fi
         done
         ;;
@@ -156,7 +156,7 @@ function userConf
         for app in firefox thunderbird; do
             DoOrDie sudo chmod -R g+r "/home/mozilla/${app}/profile";
             DoOrDieLocal touchdir -r "/home/mozilla/${app}/profile";
-            DoOrDie rsync -ax --delete "/home/mozilla/${app}/profile" "/media/share/linux/usrconf/${app}";
+            DoOrDie rsync -ax --delete "/home/mozilla/${app}/profile" "${installShare}/usrconf/${app}";
         done
         ;;
 
@@ -176,10 +176,10 @@ function userConf
                 ;;
               (*userAdd)
                 CheckCurrent /etc/{group,passwd};
-                grep 'x:10..:100:' /etc/passwd;
+                (DoOrDie grep 'x:10..:100:' /etc/passwd);
                 ;;
               (*userSudoers)
-                CheckOurOwn --sudo /etc/sudoers.d/backup;
+                CheckOurOwn --sudo /etc/sudoers.d/{backup,volumes};
                 ;;
             esac
         done
