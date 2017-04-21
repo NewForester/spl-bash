@@ -8,26 +8,40 @@
 ##  NB:     The caller must source functions etc à la sysconf script.
 ##
 
-# do it
+function defineSteps
+{
+    local major="$1"; shift;
+    local minor=0;
+
+    minor=$((minor+1));
+    loginNoGuest=$major.$minor;
+
+    minor=$((minor+1));
+    loginXfce=$major.$minor.X;
+    loginKde=$major.$minor.K;
+}
 
 function loginConf
 {
+    local major="$1"; shift;
+    defineSteps $major;
+
     case "$1" in
-      (16 | login)
-        listOptions 16 login;
+      ($major | login)
+        listOptions sysconf-login "$1";
         quit;
         ;;
 
-      (16.1 | loginNoGuest)
-        step="16.1 loginNoGuest";
+      ($loginNoGuest | loginNoGuest)
+        step="$loginNoGuest loginNoGuest";
         note "Configure lightdm so there is no guest login ...";
 
         DoOrDie CopyToKeep /etc/lightdm/lightdm.conf;
         DoOrDie ApplyPatch /etc/lightdm/lightdm.conf;
         ;;
 
-      (16.X | loginXfce)
-        step="16.X loginXfce";
+      ($loginXfce | loginXfce)
+        step="$loginXfce loginXfce";
         note "Configure the display manager for XFCE ...";
 
         DoOrDie InstallOurOwn --sudo /etc/x11vnc.pass;
@@ -37,8 +51,8 @@ function loginConf
         DoOrDie ApplyPatch /etc/lightdm/lightdm.conf;
         ;;
 
-      (16.K | loginKde)
-        step="16.K loginKde";
+      ($loginKde | loginKde)
+        step="$loginKde loginKde";
         note "Configure the display manager for KDE ...";
 
         DoOrDie InstallOurOwn /etc/default/kdm.d/20_desktop-custards;
@@ -47,10 +61,10 @@ function loginConf
         DoOrDie ApplyPatch /etc/kde4/kdm/{backgroundrc,kdmrc,Xaccess};
         ;;
 
-      (16.99)
-        step="16.99 sanityCheck";
+      ($major.99)
+        step="$major.99 sanityCheck";
         note "Checking login ...";
-        listLoggedSteps ${1%.*} | while read step name status; do
+        listLoggedSteps $major | while read step name status; do
             printf "%-7s %-23s %s\n" $step $name $status;
             case "$installDist $name" in
               (*loginNoGuest)
@@ -75,7 +89,7 @@ function loginConf
 
       (*)
         badOption "$1";
-        listOptions 16 login;
+        listOptions sysconf-login $major;
         quit 1;
         ;;
     esac

@@ -169,7 +169,7 @@ case "$1" in
 
   (16* | login*)
     source sysconf-login;
-    loginConf "$@";
+    loginConf 16 "$@";
     ;;
 
   (15* | user* | mozilla*)
