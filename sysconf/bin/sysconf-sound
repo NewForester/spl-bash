@@ -17,8 +17,23 @@ function defineSteps
     soundIsaModules=$major.$minor;
 
     minor=$((minor+1));
+    soundTestDefault=$major.$minor.D;
+    soundTestPulse=$major.$minor.P;
+
+    minor=$((minor+1));
     soundAlsaSave=$major.$minor.S;
     soundAlsaRestore=$major.$minor.R;
+}
+
+function soundTest
+{
+    if set | fgrep -q SSH_TTY; then
+        echo "... will not work over SSH";
+    else
+        speaker-test -D $1 -l 1 -c 8;
+
+        echo "... done but check audio output front and back";
+    fi
 }
 
 function soundConf
@@ -42,6 +57,22 @@ function soundConf
         note "Ensure ISA sound modules are loaded during boot ...";
         DoOrDie CopyToKeep /etc/modules;
         DoOrDie ApplyPatch /etc/modules;
+        ;;
+
+      ($soundTestDefault | soundTestDefault)
+        step="$soundTestDefault soundTestDefault";
+        note "Test sound output on default h/w device ...";
+
+        soundTest default;
+        quit;
+        ;;
+
+      ($soundTestPulse | soundTestPulse)
+        step="$soundTestPulse soundTestPulse";
+        note "Test sound output on pulse pseudo device ...";
+
+        soundTest pulse;
+        quit;
         ;;
 
       ($soundAlsaSave | soundAlsaSave)
