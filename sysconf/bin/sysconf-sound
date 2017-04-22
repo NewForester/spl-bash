@@ -14,11 +14,11 @@ function defineSteps
     local minor=0;
 
     minor=$((minor+1));
-    soundAlsaSave=$major.$minor.S;
-    soundAlsaRestore=$major.$minor.R;
+    soundIsaModules=$major.$minor;
 
     minor=$((minor+1));
-    soundModules=$major.$minor;
+    soundAlsaSave=$major.$minor.S;
+    soundAlsaRestore=$major.$minor.R;
 }
 
 function soundConf
@@ -30,6 +30,18 @@ function soundConf
       ($major | sound)
         listOptions sysconf-sound "$1";
         quit;
+        ;;
+
+      ($soundIsaModules | soundIsaModules)
+        if [[ "${HOSTNAME}" != "birch" ]]; then
+            error "Impertinent choice on ${HOSTNAME}";
+            quit;
+        fi
+
+        step="$soundIsaModules soundIsaModules";
+        note "Ensure ISA sound modules are loaded during boot ...";
+        DoOrDie CopyToKeep /etc/modules;
+        DoOrDie ApplyPatch /etc/modules;
         ;;
 
       ($soundAlsaSave | soundAlsaSave)
@@ -48,33 +60,21 @@ function soundConf
         DoOrDie sudo alsactl restore;
         ;;
 
-      ($soundModules | soundModules)
-        if [[ "${HOSTNAME}" != "birch" ]]; then
-            error "Impertinent choice on ${HOSTNAME}";
-            quit;
-        fi
-
-        step="$soundModules soundModules";
-        note "Ensure ISA sound modules are loaded during boot ...";
-        DoOrDie CopyToKeep /etc/modules;
-        DoOrDie ApplyPatch /etc/modules;
-        ;;
-
       ($major.99)
         step="$major.99 sanityCheck";
         note "Checking sound ...";
         listLoggedSteps $major | while read step name status; do
             printf "%-7s %-23s %s\n" $step $name $status;
             case "$installDist $name" in
+              (*soundIsaModules | *soundModules)
+                CheckOriginal /etc/modules;
+                CheckPatch /etc/modules;
+                ;;
               (*soundAlsaSave)
                 CheckOriginal /var/lib/alsa/asound.state;
                 ;;
               (*soundAlsaRestore)
                 CheckOurOwn /var/lib/alsa/asound.state;
-                ;;
-              (*soundModules)
-                CheckOriginal /etc/modules;
-                CheckPatch /etc/modules;
                 ;;
             esac
         done
