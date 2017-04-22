@@ -164,7 +164,7 @@ case "$1" in
 
   (17* | sound*)
     source sysconf-sound;
-    soundConf "$@";
+    soundConf 17 "$@";
     ;;
 
   (16* | login*)

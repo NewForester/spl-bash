@@ -8,48 +8,62 @@
 ##  NB:     The caller must source functions etc à la sysconf script.
 ##
 
-# do it
+function defineSteps
+{
+    local major="$1"; shift;
+    local minor=0;
+
+    minor=$((minor+1));
+    soundAlsaSave=$major.$minor.S;
+    soundAlsaRestore=$major.$minor.R;
+
+    minor=$((minor+1));
+    soundModules=$major.$minor;
+}
 
 function soundConf
 {
+    local major="$1"; shift;
+    defineSteps $major;
+
     case "$1" in
-      (17 | sound)
-        listOptions 17 sound;
+      ($major | sound)
+        listOptions sysconf-sound "$1";
         quit;
         ;;
 
-      (17.1.S | soundAlsaSave)
-        step="17.1.S soundAlsaSave";
+      ($soundAlsaSave | soundAlsaSave)
+        step="$soundAlsaSave soundAlsaSave";
         note "Save ALSA configuration ...";
 
         DoOrDie sudo alsactl store;
         DoOrDie CopyToKeep /var/lib/alsa/asound.state;
         ;;
 
-      (17.1.R | soundAlsaRestore)
-        step="17.1.R soundAlsaRestore";
+      ($soundAlsaRestore | soundAlsaRestore)
+        step="$soundAlsaRestore soundAlsaRestore";
         note "Restore ALSA configuration ...";
 
         DoOrDie InstallOurOwn /var/lib/alsa/asound.state;
         DoOrDie sudo alsactl restore;
         ;;
 
-      (17.2 | soundModules)
+      ($soundModules | soundModules)
         if [[ "${HOSTNAME}" != "birch" ]]; then
             error "Impertinent choice on ${HOSTNAME}";
             quit;
         fi
 
-        step="17.2 soundModules";
+        step="$soundModules soundModules";
         note "Ensure ISA sound modules are loaded during boot ...";
         DoOrDie CopyToKeep /etc/modules;
         DoOrDie ApplyPatch /etc/modules;
         ;;
 
-      (17.99)
-        step="17.99 sanityCheck";
+      ($major.99)
+        step="$major.99 sanityCheck";
         note "Checking sound ...";
-        listLoggedSteps ${1%.*} | while read step name status; do
+        listLoggedSteps $major | while read step name status; do
             printf "%-7s %-23s %s\n" $step $name $status;
             case "$installDist $name" in
               (*soundAlsaSave)
@@ -69,7 +83,7 @@ function soundConf
 
       (*)
         badOption "$1";
-        listOptions 17 sound;
+        listOptions sysconf-sound $major;
         quit 1;
         ;;
     esac
