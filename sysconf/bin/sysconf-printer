@@ -8,25 +8,38 @@
 ##  NB:     The caller must source functions etc à la sysconf script.
 ##
 
-# do it
+function defineSteps
+{
+    local major="$1"; shift;
+    local minor=0;
+
+    minor=$((minor+1));
+    printerInstall=$major.$minor;
+
+    minor=$((minor+1));
+    printerSetup=$major.$minor;
+}
 
 function printerConf
 {
+    local major="$1"; shift;
+    defineSteps $major;
+
     case "$1" in
-      (18 | printer)
-        listOptions 18 printer;
+      ($major | printer)
+        listOptions sysconf-printer "$1";
         quit;
         ;;
 
-      (18.1 | printerInstall)
-        step="18.1 printerInstall";
+      ($printerInstall | printerInstall)
+        step="$printerInstall printerInstall";
         note "Install printer and scanner software ...";
 
         installPackage cups xsane hplip hplip-gui;
         ;;
 
-      (18.2 | printerSetup)
-        step="18.2 printerSetup";
+      ($printerSetup | printerSetup)
+        step="$printerSetup printerSetup";
         note "Install configuration files for the study printer";
 
         DoOrDie sudo service cups stop;
@@ -34,12 +47,15 @@ function printerConf
         DoOrDie sudo service cups start;
         ;;
 
-      (18.99)
-        step="18.99 sanityCheck";
+      ($major.99)
+        step="$major.99 sanityCheck";
         note "Checking printer ...";
-        listLoggedSteps ${1%.*} | while read step name status; do
+        listLoggedSteps $major | while read step name status; do
             printf "%-7s %-23s %s\n" $step $name $status;
             case "$installDist $name" in
+              (*printerInstall)
+                CheckCurrent /etc/{group,passwd};
+                ;;
               (*printerSetup)
                 CheckMaster --sudo --nokeep /etc/cups/printers.conf;
                 ;;
@@ -50,7 +66,7 @@ function printerConf
 
       (*)
         badOption "$1";
-        listOptions 18 printer;
+        listOptions sysconf-printer $major;
         quit 1;
         ;;
     esac

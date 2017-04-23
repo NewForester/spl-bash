@@ -159,7 +159,7 @@ case "$1" in
 
   (18* | printer*)
     source sysconf-printer;
-    printerConf "$@";
+    printerConf 18 "$@";
     ;;
 
   (17* | sound*)
