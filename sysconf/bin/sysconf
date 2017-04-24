@@ -107,11 +107,6 @@ case "$1" in
     quit 1;
     ;;
 
-  (29* | vpn*)
-    source sysconf-vpn;
-    vpnConf "$@";
-    ;;
-
   (28* | deluge*)
     source sysconf-deluge;
     delugeConf "$@";
@@ -150,6 +145,11 @@ case "$1" in
   (2[0-9]*)
     badOption "$1";
     quit 1;
+    ;;
+
+  (19* | vpn*)
+    source sysconf-vpn;
+    vpnConf 19 "$@";
     ;;
 
   (19* | mail*)

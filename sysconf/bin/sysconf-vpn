@@ -8,25 +8,50 @@
 ##  NB:     The caller must source functions etc à la sysconf script.
 ##
 
-# do it
+function defineSteps
+{
+    local major="$1"; shift;
+    local minor=0;
+
+    minor=$((minor+1));
+    vpnInstall=$major.$minor;
+
+    minor=$((minor+1));
+    vpnConfigure=$major.$minor;
+
+    minor=$((minor+1));
+    vpnNoAutostart=$major.$minor;
+
+    minor=$((minor+1));
+    vpnHosts=$major.$minor;
+
+    minor=$((minor+1));
+    vpnHostsAllow=$major.$minor;
+
+    minor=10;
+    vpnNexsan=$major.$minor;
+}
 
 function vpnConf
 {
+    local major="$1"; shift;
+    defineSteps $major;
+
     case "$1" in
-      (29 | vpn)
-        listOptions 29 vpn;
+      ($major | vpn)
+        listOptions sysconf-vpn "$1";
         quit;
         ;;
 
-      (29.1 | vpnInstall)
-        step="29.1 vpnInstall";
+      ($vpnInstall | vpnInstall)
+        step="$vpnInstall vpnInstall";
         note "Install openvpn ...";
 
         installPackage openvpn;
         ;;
 
-      (29.2 | vpnConfigure)
-        step="29.2 vpnConfigure";
+      ($vpnConfigure | vpnConfigure)
+        step="$vpnConfigure vpnConfigure";
         note "Install host specific keys, certificates and configuration ...";
 
         DoOrDie InstallOurOwn /etc/openvpn/ca.crt;
@@ -53,16 +78,16 @@ function vpnConf
         DoOrDie InstallOurOwn --sudo /etc/openvpn/${host}.key;
         ;;
 
-      (29.3 | vpnNoAutostart)
-        step="29.3 vpnNoAutostart";
+      ($vpnNoAutostart | vpnNoAutostart)
+        step="$vpnNoAutostart vpnNoAutostart";
         note "Do not start the VPN client automatically ...";
 
         DoOrDie CopyToKeep /etc/default/openvpn;
         DoOrDie ApplyPatch /etc/default/openvpn;
         ;;
 
-      (29.4 | vpnHosts)
-        step="29.4 vpnHosts";
+      ($vpnHosts | vpnHosts)
+        step="$vpnHosts vpnHosts";
         note "Patch /etc/hosts with VPN host names ...";
 
         echo "... update /etc/hosts";
@@ -76,8 +101,8 @@ function vpnConf
         DoOrDie Deploy /etc/hosts;
         ;;
 
-      (29.5 | vpnHostsAllow)
-        step="29.5 vpnHostsAllow";
+      ($vpnHostsAllow | vpnHostsAllow)
+        step="$vpnHostsAllow vpnHostsAllow";
         note "Update /etc/hosts.allow to allow services over the VPN ...";
 
         echo "... update /etc/hosts.allow";
@@ -86,8 +111,8 @@ function vpnConf
         DoOrDie Deploy /etc/hosts.allow;
         ;;
 
-      (29.10 | vpnNexsan)
-        step="29.10 vpnNexsan";
+      ($vpnNexsan | vpnNexsan)
+        step="$vpnNexsan vpnNexsan";
         note "Install ppp files needed for Nexsan VPNs ...";
 
         DoOrDie InstallOurOwn /etc/ppp/peers/{nexsan-pptp,nexsan-sstp};
@@ -97,12 +122,15 @@ function vpnConf
         DoOrDie ApplyPatch --sudo /etc/ppp/chap-secrets chap-secrets-nexsan;
         ;;
 
-      (29.99)
-        step="29.99 sanityCheck";
+      ($major.99)
+        step="$major.99 sanityCheck";
         note "Checking vpn ...";
-        listLoggedSteps ${1%.*} | while read step name status; do
+        listLoggedSteps $major | while read step name status; do
             printf "%-7s %-23s %s\n" $step $name $status;
             case "$installDist $name" in
+              (*vpnInstall)
+                CheckCurrent /etc/{group,passwd};
+                ;;
               (*vpnConfigure)
                 CheckOurOwn /etc/openvpn/ca.crt;
 
@@ -154,7 +182,7 @@ function vpnConf
 
       (*)
         badOption "$1";
-        listOptions 29 vpn;
+        listOptions sysconf-vpn $major;
         quit 1;
         ;;
     esac
