@@ -32,6 +32,18 @@ function defineSteps
     vpnNexsan=$major.$minor;
 }
 
+function vpnHost
+{
+    case "$1" in
+      (salix | ebony)
+        echo custards;
+        ;;
+      (*)
+        echo work;
+        ;;
+    esac
+}
+
 function vpnConf
 {
     local major="$1"; shift;
@@ -54,28 +66,18 @@ function vpnConf
         step="$vpnConfigure vpnConfigure";
         note "Install host specific keys, certificates and configuration ...";
 
-        DoOrDie InstallOurOwn /etc/openvpn/ca.crt;
-
-        local vpnhost;
-        case "${HOSTNAME}" in
-          (ebony)
-            host=custards;
+        local vpnhost=$(vpnHost "${HOSTNAME}");
+        case "${vpnhost}" in
+          (custards)
             DoOrDie InstallOurOwn /etc/openvpn/dh1024.pem;
             DoOrDie InstallOurOwn --sudo /etc/openvpn/ca.key;
-            ;;
-          (maple)
-            host=maple;
-            ;;
-          (uk694715dl)
-            host=work;
-            ;;
+            ;&
           (*)
-            host=clifford;
+            DoOrDie InstallOurOwn /etc/openvpn/ca.crt;
+            DoOrDie InstallOurOwn /etc/openvpn/"${vpnhost}".{conf,crt};
+            DoOrDie InstallOurOwn --sudo /etc/openvpn/"${vpnhost}".key;
             ;;
         esac
-
-        DoOrDie InstallOurOwn /etc/openvpn/${host}.{conf,crt};
-        DoOrDie InstallOurOwn --sudo /etc/openvpn/${host}.key;
         ;;
 
       ($vpnNoAutostart | vpnNoAutostart)
@@ -132,28 +134,18 @@ function vpnConf
                 CheckCurrent /etc/{group,passwd};
                 ;;
               (*vpnConfigure)
-                CheckOurOwn /etc/openvpn/ca.crt;
-
-                local vpnhost;
-                case "${HOSTNAME}" in
-                  (ebony)
-                    host=custards;
+                local vpnhost=$(vpnHost "${HOSTNAME}");
+                case "${vpnhost}" in
+                  (custards)
                     CheckOurOwn /etc/openvpn/dh1024.pem;
                     CheckOurOwn --sudo /etc/openvpn/ca.key;
-                    ;;
-                  (maple)
-                    host=maple;
-                    ;;
-                  (uk694715dl)
-                    host=work;
-                    ;;
+                    ;&
                   (*)
-                    host=clifford;
+                    CheckOurOwn /etc/openvpn/ca.crt;
+                    CheckOurOwn /etc/openvpn/"${vpnhost}".{conf,crt};
+                    CheckOurOwn --sudo /etc/openvpn/"${vpnhost}".key;
                     ;;
                 esac
-
-                CheckOurOwn /etc/openvpn/${host}.{conf,crt};
-                CheckOurOwn --sudo /etc/openvpn/${host}.key;
                 ;;
               (*vpnNoAutostart)
                 CheckOriginal /etc/default/openvpn;
