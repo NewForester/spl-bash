@@ -85,40 +85,10 @@ function mailConf
 
       ($mailConfigureMta | mailConfigureMta)
         step="$mailConfigureMta mailConfigureMta";
-        note "Configure exim4 MTA as a local MTA ...";
+        note "Configure exim4 MTA ...";
 
         DoOrDie CopyToKeep /etc/exim4/update-exim4.conf.conf;
-
-        local keep=keep/etc/exim4/update-exim4.conf.conf;
-        DoOrDie cp -p "${keep}".$RELEASE "${keep}";
-        DoOrDie sed -i "${keep}" -e "\"/dc_other_hostnames=/s/'.*'/'mail.custards.lan ; $HOSTNAME.custards.lan'/\"";
-        DoOrDie sed -i "${keep}" -e "\"/dc_local_interfaces=/s/'.*'/'127.0.0.1 ; $(LanAddress) ; ::1'/\"";
-        DoOrDie sed -i "${keep}" -e "\"/dc_localdelivery=/s/'.*'/'dovecot_delivery'/\"";
-
-        DoOrDie Deploy /etc/exim4/update-exim4.conf.conf;
-
-        DoOrDie sudo update-exim4.conf;
-        DoOrDie sudo service exim4 restart;
-
-        note "Set /etc/aliases to forward e-mail ...";
-        DoOrDie CopyToKeep /etc/aliases;
-        DoOrDie ApplyPatch /etc/aliases;
-        ;;
-
-      ($mailSatelliteMta | mailSatelliteMta)
-        step="$mailSatelliteMta mailSatelliteMta";
-        note "Configure exim4 as a satellite MTA ...";
-
-        DoOrDie CopyToKeep /etc/exim4/update-exim4.conf.conf;
-
-        local keep=keep/etc/exim4/update-exim4.conf.conf;
-        DoOrDie cp -p "${keep}".$RELEASE "${keep}";
-        DoOrDie sed -i "${keep}" -e "\"/dc_eximconfig_configtype=/s/'.*'/'satellite'/\"";
-        DoOrDie sed -i "${keep}" -e "\"/dc_readhost=/s/'.*'/'$HOSTNAME.custards.lan'/\"";
-        DoOrDie sed -i "${keep}" -e "\"/dc_smarthost=/s/'.*'/'mail.custards.lan'/\"";
-        DoOrDie sed -i "${keep}" -e "\"/dc_hide_mailname=/s/'.*'/'true'/\"";
-
-        DoOrDie Deploy /etc/exim4/update-exim4.conf.conf;
+        DoOrDie ApplyPatch /etc/exim4/update-exim4.conf.conf;
 
         DoOrDie sudo update-exim4.conf;
         DoOrDie sudo service exim4 restart;
@@ -143,13 +113,7 @@ function mailConf
                 ;;
               (*mailConfigureMta)
                 CheckOriginal /etc/exim4/update-exim4.conf.conf;
-                CheckDeployed /etc/exim4/update-exim4.conf.conf;
-                CheckOriginal /etc/aliases;
-                CheckPatch /etc/aliases;
-                ;;
-              (*mailSatelliteMta)
-                CheckOriginal /etc/exim4/update-exim4.conf.conf;
-                CheckDeployed /etc/exim4/update-exim4.conf.conf;
+                CheckPatch /etc/exim4/update-exim4.conf.conf;
                 CheckOriginal /etc/aliases;
                 CheckPatch /etc/aliases;
                 ;;
