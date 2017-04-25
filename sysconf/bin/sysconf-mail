@@ -8,26 +8,42 @@
 ##  NB:     The caller must source functions etc à la sysconf script.
 ##
 
-# do it
+function defineSteps
+{
+    local major="$1"; shift;
+    local minor=0;
+
+    minor=$((minor+1));
+    mailInstall=$major.$minor;
+
+    minor=$((minor+1));
+    mailConfigure=$major.$minor;
+
+    minor=$((minor+1));
+    mailSatellite=$major.$minor;
+}
 
 function mailConf
 {
+    local major="$1"; shift;
+    defineSteps $major;
+
     case "$1" in
-      (19 | mail)
-        listOptions 19 mail;
+      ($major | mail)
+        listOptions sysconf-mail "$1";
         quit;
         ;;
 
-      (19.1 | mailInstall)
-        step="19.1 mailInstall";
+      ($mailInstall | mailInstall)
+        step="$mailInstall mailInstall";
         note "Install dovecot MDA software ...";
 
         installPackage dovecot-imapd;
         DoOrDie SaveCurrent /etc/{group,passwd};
         ;;
 
-      (19.2 | mailConfigure)
-        step="19.2 mailConfigure";
+      ($mailConfigure | mailConfigure)
+        step="$mailConfigure mailConfigure";
         note "Configure dovecot MDA ...";
 
         if [[ ! -b "/dev/${HOSTNAME}/share_mail" ]]; then
@@ -70,8 +86,8 @@ function mailConf
         DoOrDie ApplyPatch /etc/aliases;
         ;;
 
-      (19.3 | mailSatellite)
-        step="19.3 mailSatellite";
+      ($mailSatellite | mailSatellite)
+        step="$mailSatellite mailSatellite";
         note "Configure exim4 as a satellite MTA ...";
 
         DoOrDie CopyToKeep /etc/exim4/update-exim4.conf.conf;
@@ -93,13 +109,16 @@ function mailConf
         DoOrDie ApplyPatch /etc/aliases;
         ;;
 
-      (19.99)
-        step="19.99 sanityCheck";
+      ($major.99)
+        step="$major.99 sanityCheck";
         note "Checking mail ...";
-        listLoggedSteps ${1%.*} | while read step name status; do
+        listLoggedSteps $major | while read step name status; do
             printf "%-7s %-23s %s\n" $step $name $status;
             case "$installDist $name" in
-              (*maiConfigure)
+              (*mailInstall)
+                CheckCurrent /etc/{group,passwd};
+                ;;
+              (*mailConfigure)
                 CheckOurOwn /etc/dovecot/local.conf;
                 CheckOriginal /etc/exim4/conf.d/transport/37_exim4-config_dovecot_delivery;
                 CheckOurOwn /etc/exim4/conf.d/transport/37_exim4-config_dovecot_delivery;
@@ -121,7 +140,7 @@ function mailConf
 
       (*)
         badOption "$1";
-        listOptions 19 mail;
+        listOptions sysconf-mail $major;
         quit 1;
         ;;
     esac

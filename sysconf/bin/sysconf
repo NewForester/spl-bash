@@ -107,6 +107,11 @@ case "$1" in
     quit 1;
     ;;
 
+  (21* | mail*)
+    source sysconf-mail;
+    mailConf 21 "$@";
+    ;;
+
   (28* | deluge*)
     source sysconf-deluge;
     delugeConf "$@";
@@ -150,11 +155,6 @@ case "$1" in
   (19* | vpn*)
     source sysconf-vpn;
     vpnConf 19 "$@";
-    ;;
-
-  (19* | mail*)
-    source sysconf-mail;
-    mailConf "$@";
     ;;
 
   (18* | printer*)
