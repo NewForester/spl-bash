@@ -24,7 +24,10 @@ function defineSteps
 
     minor=$((minor+1));
     mailConfigureMta=$major.$minor;
-    mailSatelliteMta=$major.$minor.S;
+
+    minor=$((minor+1));
+    mailDisable=$major.$minor.D;
+    mailEnable=$major.$minor.E;
 }
 
 function mailConf
@@ -96,6 +99,32 @@ function mailConf
         note "Set /etc/aliases to forward e-mail ...";
         DoOrDie CopyToKeep /etc/aliases;
         DoOrDie ApplyPatch /etc/aliases;
+        ;;
+
+      ($mailDisable | mailDisable)
+        step="$mailDisable mailDisable";
+        note "Disable mail service ...";
+
+        DoOrDie sudo invoke-rc.d exim4 stop;
+        DoOrDie sudo update-rc.d exim4 disable;
+
+        if ! fgrep -q satellite /etc/exim4/update-exim4.conf.conf; then
+            DoOrDie sudo invoke-rc.d dovecot stop;
+            DoOrDie sudo update-rc.d dovecot disable;
+        fi
+        ;;
+
+      ($mailEnable | mailEnable)
+        step="$mailEnable mailEnable";
+        note "Enable mail service ...";
+
+        if ! fgrep -q satellite /etc/exim4/update-exim4.conf.conf; then
+            DoOrDie sudo update-rc.d dovecot enable;
+            DoOrDie sudo invoke-rc.d dovecot start;
+        fi
+
+        DoOrDie sudo update-rc.d exim4 enable;
+        DoOrDie sudo invoke-rc.d exim4 start;
         ;;
 
       ($major.99)
