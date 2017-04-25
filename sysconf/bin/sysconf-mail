@@ -14,13 +14,14 @@ function defineSteps
     local minor=0;
 
     minor=$((minor+1));
-    mailInstall=$major.$minor;
+    mailInstallMda=$major.$minor;
 
     minor=$((minor+1));
-    mailConfigure=$major.$minor;
+    mailConfigureMda=$major.$minor;
 
     minor=$((minor+1));
-    mailSatellite=$major.$minor;
+    mailConfigureMta=$major.$minor;
+    mailSatelliteMta=$major.$minor.S;
 }
 
 function mailConf
@@ -34,16 +35,16 @@ function mailConf
         quit;
         ;;
 
-      ($mailInstall | mailInstall)
-        step="$mailInstall mailInstall";
+      ($mailInstallMda | mailInstallMda)
+        step="$mailInstallMda mailInstallMda";
         note "Install dovecot MDA software ...";
 
         installPackage dovecot-imapd;
         DoOrDie SaveCurrent /etc/{group,passwd};
         ;;
 
-      ($mailConfigure | mailConfigure)
-        step="$mailConfigure mailConfigure";
+      ($mailConfigureMda | mailConfigureMda)
+        step="$mailConfigureMda mailConfigureMda";
         note "Configure dovecot MDA ...";
 
         if [[ ! -b "/dev/${HOSTNAME}/share_mail" ]]; then
@@ -63,10 +64,13 @@ function mailConf
         DoOrDie InstallOurOwn /etc/dovecot/local.conf;
         DoOrDie sudo service dovecot restart;
 
-        note "Configure exim4 MTA as a local MTA ...";
-
         DoOrDie InstallOurOwn /etc/exim4/conf.d/transport/37_exim4-config_dovecot_delivery;
         DoOrDie sudo update-exim4.conf.template --run;
+        ;;
+
+      ($mailConfigureMta | mailConfigureMta)
+        step="$mailConfigureMta mailConfigureMta";
+        note "Configure exim4 MTA as a local MTA ...";
 
         DoOrDie CopyToKeep /etc/exim4/update-exim4.conf.conf;
 
@@ -86,8 +90,8 @@ function mailConf
         DoOrDie ApplyPatch /etc/aliases;
         ;;
 
-      ($mailSatellite | mailSatellite)
-        step="$mailSatellite mailSatellite";
+      ($mailSatelliteMta | mailSatelliteMta)
+        step="$mailSatelliteMta mailSatelliteMta";
         note "Configure exim4 as a satellite MTA ...";
 
         DoOrDie CopyToKeep /etc/exim4/update-exim4.conf.conf;
@@ -118,9 +122,27 @@ function mailConf
               (*mailInstall)
                 CheckCurrent /etc/{group,passwd};
                 ;;
+              (*mailConfigureMda)
+                CheckOurOwn /etc/dovecot/local.conf;
+                CheckOurOwn /etc/exim4/conf.d/transport/37_exim4-config_dovecot_delivery;
+                ;;
+              (*mailConfigureMta)
+                CheckOriginal /etc/exim4/update-exim4.conf.conf;
+                CheckDeployed /etc/exim4/update-exim4.conf.conf;
+                CheckOriginal /etc/aliases;
+                CheckPatch /etc/aliases;
+                ;;
+              (*mailSatelliteMta)
+                CheckOriginal /etc/exim4/update-exim4.conf.conf;
+                CheckDeployed /etc/exim4/update-exim4.conf.conf;
+                CheckOriginal /etc/aliases;
+                CheckPatch /etc/aliases;
+                ;;
+
+              # old but still needed for checking
+
               (*mailConfigure)
                 CheckOurOwn /etc/dovecot/local.conf;
-                CheckOriginal /etc/exim4/conf.d/transport/37_exim4-config_dovecot_delivery;
                 CheckOurOwn /etc/exim4/conf.d/transport/37_exim4-config_dovecot_delivery;
                 CheckOriginal /etc/exim4/update-exim4.conf.conf;
                 CheckDeployed /etc/exim4/update-exim4.conf.conf;
