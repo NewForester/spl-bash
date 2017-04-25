@@ -14,6 +14,9 @@ function defineSteps
     local minor=0;
 
     minor=$((minor+1));
+    mailVolume=$major.$minor;
+
+    minor=$((minor+1));
     mailInstallMda=$major.$minor;
 
     minor=$((minor+1));
@@ -33,6 +36,18 @@ function mailConf
       ($major | mail)
         listOptions sysconf-mail "$1";
         quit;
+        ;;
+
+      ($mailVolume | mailVolume)
+        step="$mailVolume mailVolume";
+        note "Create logical volume for mail storage ...";
+
+        createLogicalVolume share mail;
+
+        if [[ ! -b "/dev/${HOSTNAME}/share_mail" ]]; then
+            note "Mail volume does not exist ... bailing";
+            quit 1;
+        fi
         ;;
 
       ($mailInstallMda | mailInstallMda)
