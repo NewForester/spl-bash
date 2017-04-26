@@ -14,6 +14,9 @@ function defineSteps
     local minor=0;
 
     minor=$((minor+1));
+    apacheWebVolume=$major.$minor;
+
+    minor=$((minor+1));
     apacheInstall=$major.$minor;
 
     minor=$((minor+1));
@@ -35,6 +38,25 @@ function apacheConf
         quit;
         ;;
 
+      ($apacheWebVolume | apacheWebVolume)
+        step="$apacheWebVolume apacheWebVolume";
+        note "Create logical volume for web storage ...";
+
+        createLogicalVolume work www-data;
+        createAutomounterGroups work;
+
+        if [[ ! -b "/dev/${HOSTNAME}/work_www-data" ]]; then
+            note "www volume does not exist ... bailing";
+            quit 1;
+        fi
+
+        DoOrDie sudo chown "www-data:www-data" /media/work/www-data;
+
+        addUserToGroups "${USER}" www-data;
+        addUserToGroups www-data users;
+        DoOrDie SaveCurrent /etc/group;
+        ;;
+
       ($apacheInstall | apacheInstall)
         step="$apacheInstall apacheInstall";
         note "Install apache packages ...";
@@ -47,10 +69,6 @@ function apacheConf
 
         DoOrDie sudo invoke-rc.d apache2 stop;
         DoOrDie sudo update-rc.d apache2 disable;
-
-        addUserToGroups "${USER}" www-data;
-        addUserToGroups www-data users;
-        DoOrDie SaveCurrent /etc/group;
         ;;
 
       ($apacheDisable | apacheDisable)
@@ -75,11 +93,11 @@ function apacheConf
         listLoggedSteps $major | while read step name status; do
             printf "%-7s %-23s %s\n" $step $name $status;
             case "$installDist $name" in
-              (*apacheInstall))
-                CheckCurrent /etc/{group,passwd};
-              (*apacheConfigure)
+              (*apacheWebVolume)
                 CheckCurrent /etc/{group,passwd};
                 ;;
+              (*apacheInstall)
+                CheckCurrent /etc/{group,passwd};
             esac
         done
         quit;
