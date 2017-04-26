@@ -8,24 +8,41 @@
 ##  NB:     The caller must source functions etc à la sysconf script.
 ##
 
-# do it
+function defineSteps
+{
+    local major="$1"; shift;
+    local minor=0;
+
+    minor=$((minor+1));
+    apacheInstall=$major.$minor;
+
+    minor=$((minor+1));
+    apacheConfigure=$major.$minor;
+
+    minor=$((minor+1));
+    apacheDisable=$major.$minor.D;
+    apacheEnable=$major.$minor.E;
+}
 
 function apacheConf
 {
+    local major="$1"; shift;
+    defineSteps $major;
+
     case "$1" in
-      (25 | apache)
-        listOptions 25 apache;
+      ($major | apache)
+        listOptions sysconf-apache "$1";
         quit;
         ;;
 
-      (25.1 | apacheInstall)
-        step="25.1 apacheInstall";
+      ($apacheInstall | apacheInstall)
+        step="$apacheInstall apacheInstall";
         note "Install apache packages ...";
         installPackage apache2;
         ;;
 
-      (25.2 | apacheConfigure)
-        step="25.2 apacheConfigure";
+      ($apacheConfigure | apacheConfigure)
+        step="$apacheConfigure apacheConfigure";
         note "Configure apache daemon and server ...";
 
         DoOrDie sudo invoke-rc.d apache2 stop;
@@ -36,28 +53,30 @@ function apacheConf
         DoOrDie SaveCurrent /etc/group;
         ;;
 
-      (25.3.D | apacheDisable)
-        step="25.3.D apacheDisable";
+      ($apacheDisable | apacheDisable)
+        step="$apacheDisable apacheDisable";
         note "Disable apache web server ...";
 
         DoOrDie sudo invoke-rc.d apache2 stop;
         DoOrDie sudo update-rc.d apache2 disable;
         ;;
 
-      (25.3.E | apacheEnable)
-        step="25.3.E apacheEnable";
+      ($apacheEnable | apacheEnable)
+        step="$apacheEnable apacheEnable";
         note "Enable apache web server ...";
 
         DoOrDie sudo update-rc.d apache2 enable;
         DoOrDie sudo invoke-rc.d apache2 start;
         ;;
 
-      (25.99)
-        step="25.99 sanityCheck";
+      ($major.99)
+        step="$major.99 sanityCheck";
         note "Checking apache ...";
-        listLoggedSteps ${1%.*} | while read step name status; do
+        listLoggedSteps $major | while read step name status; do
             printf "%-7s %-23s %s\n" $step $name $status;
             case "$installDist $name" in
+              (*apacheInstall))
+                CheckCurrent /etc/{group,passwd};
               (*apacheConfigure)
                 CheckCurrent /etc/{group,passwd};
                 ;;
@@ -68,7 +87,7 @@ function apacheConf
 
       (*)
         badOption "$1";
-        listOptions 25 apache;
+        listOptions sysconf-apache $major;
         quit 1;
         ;;
     esac
