@@ -74,10 +74,7 @@ function restoreWiki
     cd keep/etc/moin > /dev/null;
 
         DoOrDie cp -pf mywiki.py "${wikiName}.py";
-        DoOrDie sed -e s/MyWiki/\""${siteName}"\"/ -e s/mywiki/"${wikiName}"/ -i "${wikiName}.py";
-
-        # DoOrDie does not cope well with the ( and ) in the sed expression
-        # or perhaps it is just the spaces that screw it up
+        DoOrDie sed -i "${wikiName}.py" -e "'s/MyWiki/${siteName}/'" -e "'s/mywiki/${wikiName}/'";
 
         local lanName="${installLan%%-*}";
 
@@ -88,40 +85,18 @@ function restoreWiki
             address="${wikiName}.wiki.localhost";
         fi
 
-        echo "   " \
-        sed \
-            -e '/"'"${wikiName}"'"/d' \
-            -i farmconfig.py;
-        sed \
-            -e '/"'"${wikiName}"'"/d' \
-            -i farmconfig.py || exit 1;
-
-        echo "   " \
-        sed \
-            -e '/"mywiki"/{s/ (/ #(/; p; s/ #(/ (/; s/ *#.*//}' \
-            -e '/"mywiki"/s~r".*"~r"^http://'"${address}"':8080/.*$"~' \
-            -e '/"mywiki"/s~mywiki~'"${wikiName}"'~' \
-            -i farmconfig.py;
-        sed \
-            -e '/"mywiki"/{s/ (/ #(/; p; s/ #(/ (/; s/ *#.*//}' \
-            -e '/"mywiki"/s~r".*"~r"^http://'"${address}"':8080/.*$"~' \
-            -e '/"mywiki"/s~mywiki~'"${wikiName}"'~' \
-            -i farmconfig.py || exit 1;
+        DoOrDie sed -i farmconfig.py \
+            -e "'/\"${wikiName}\"/d'" \
+            -e "'/\"mywiki\"/{s/ (/ #(/; p; s/ #(/ (/; s/ *#.*//}'" \
+            -e "'/\"mywiki\"/s~r\".*\"~r\"^http://${address}:8080/.*\$\"~'" \
+            -e "'/\"mywiki\"/s/mywiki/${wikiName}/'";
 
         case "${lanName}" in
           (custards)
-            echo "   " \
-            sed -e '/"'${wikiName}'"/'"{p; s/.localhost/.${lanName}.lan/}" \
-                -i farmconfig.py;
-            sed -e '/"'${wikiName}'"/'"{p; s/.localhost/.${lanName}.lan/}" \
-                -i farmconfig.py || exit 1;
+            DoOrDie sed -i farmconfig.py -e "'/\"${wikiName}\"/{p; s/.localhost/.${lanName}.lan/}'";
             ;;
           (vadatech)
-            echo "   " \
-            sed -e '/"'${wikiName}'"/'"{p; s/.localhost/.${lanName}.uk.lan/p; s/.uk.lan/.uk.lab/}" \
-                -i farmconfig.py;
-            sed -e '/"'${wikiName}'"/'"{p; s/.localhost/.${lanName}.uk.lan/p; s/.uk.lan/.uk.lab/}" \
-                -i farmconfig.py || exit 1;
+            DoOrDie sed -i farmconfig.py -e "'/\"${wikiName}\"/{p; s/.localhost/.${lanName}.uk.lan/p; s/.uk.lan/.uk.lab/}'";
             ;;
         esac
 
