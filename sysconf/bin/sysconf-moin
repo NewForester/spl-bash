@@ -41,87 +41,93 @@ function defineSteps
 
 function restoreWiki
 {
-    local junk backup site address;
-
-    local moinRoot="$1"; shift;
+    local wikiName="$1"; shift;
+    local siteName="$1"; shift;
 
     echo "... stopping the standalone server";
     DoOrDie sudo service moin stop;
 
     # remove unwanted language packs
-    junk="${moinRoot}/mywiki/underlay/pages/LanguageSetup/attachments/";
+    local junk="${moinRoot}/mywiki/underlay/pages/LanguageSetup/attachments/";
     if [[ -d "${junk}" ]]; then
         DoOrDie sudo rm -fr "${junk}";
     fi
 
-    backup=/media/share/backup/current/wiki-$1.tgz;
-    if [[ -d "${moinRoot}/$1" ]]; then
-        DoOrDie sudo -u www-data rm -r ${moinRoot}/$1;
+    local wikiRoot="${moinRoot}/${wikiName}";
+    local backup="/media/share/backup/current/wiki-moin-${wikiName}.tgz";
+    if [[ -d "${wikiRoot}" ]]; then
+        DoOrDie sudo -u www-data rm -r "${wikiRoot}";
     fi
     if [[ -r "${backup}" ]]; then
-        echo "... restore backup of the $1 wiki";
-        DoOrDie sudo -u www-data tar -xzf ${backup} --exclude=text_html --exclude=underlay -C ${moinRoot};
+        echo "... restore backup of the ${wikiName} wiki";
+        DoOrDie sudo -u www-data tar -xzf "${backup}" --exclude=text_html --exclude=underlay -C "${moinRoot}";
     else
-        echo "... create $1 wiki";
-        DoOrDie sudo -u www-data mkdir -p ${moinRoot}/$1;
-        DoOrDie sudo -u www-data cp -pR /usr/share/moin/data ${moinRoot}/$1;
-        DoOrDie sudo -u www-data chmod -R ug+rwX ${moinRoot}/$1;
-        DoOrDie sudo -u www-data chmod -R o-rwx ${moinRoot}/$1;
+        echo "... create ${wikiName} wiki";
+        DoOrDie sudo -u www-data mkdir -p "${wikiRoot}";
+        DoOrDie sudo -u www-data cp -pR /usr/share/moin/data "${wikiRoot}";
+        DoOrDie sudo -u www-data chmod -R ug+rwX "${wikiRoot}";
+        DoOrDie sudo -u www-data chmod -R o-rwx "${wikiRoot}";
     fi
 
-    if [[ ! -e /etc/moin/$1.py ]]; then
-        echo "... configure standalone server to handle the $1 wiki";
+    echo "... configure standalone server to handle the ${wikiName} wiki";
 
-        cd keep/etc/moin > /dev/null;
+    cd keep/etc/moin > /dev/null;
 
-            DoOrDie cp -pf mywiki.py $1.py;
-            DoOrDie sed -e s/MyWiki/\""$2"\"/ -e s/mywiki/"$1"/ -i $1.py;
-            DoOrDie Deploy /etc/moin/$1.py;
+        DoOrDie cp -pf mywiki.py "${wikiName}.py";
+        DoOrDie sed -e s/MyWiki/\""${siteName}"\"/ -e s/mywiki/"${wikiName}"/ -i "${wikiName}.py";
 
-            # DoOrDie does not cope well with the ( and ) in the sed expression
-            # or perhaps it is just the spaces that screw it up
+        # DoOrDie does not cope well with the ( and ) in the sed expression
+        # or perhaps it is just the spaces that screw it up
 
-            site="${installLan%%-*}";
+        local lanName="${installLan%%-*}";
 
-            if [[ "$1" == "${site}" ]]; then
-                address="wiki.localhost";
-            else
-                address="$1.wiki.localhost";
-            fi
+        local address;
+        if [[ "${wikiName}" == "${lanName}" ]]; then
+            address="wiki.localhost";
+        else
+            address="${wikiName}.wiki.localhost";
+        fi
 
+        echo "   " \
+        sed \
+            -e '/"'"${wikiName}"'"/d' \
+            -i farmconfig.py;
+        sed \
+            -e '/"'"${wikiName}"'"/d' \
+            -i farmconfig.py || exit 1;
+
+        echo "   " \
+        sed \
+            -e '/"mywiki"/{s/ (/ #(/; p; s/ #(/ (/; s/ *#.*//}' \
+            -e '/"mywiki"/s~r".*"~r"^http://'"${address}"':8080/.*$"~' \
+            -e '/"mywiki"/s~mywiki~'"${wikiName}"'~' \
+            -i farmconfig.py;
+        sed \
+            -e '/"mywiki"/{s/ (/ #(/; p; s/ #(/ (/; s/ *#.*//}' \
+            -e '/"mywiki"/s~r".*"~r"^http://'"${address}"':8080/.*$"~' \
+            -e '/"mywiki"/s~mywiki~'"${wikiName}"'~' \
+            -i farmconfig.py || exit 1;
+
+        case "${lanName}" in
+          (custards)
             echo "   " \
-            sed \
-                -e '/"mywiki"/{s/ (/ #(/; p; s/ #(/ (/; s/ *#.*//}' \
-                -e '/"mywiki"/s~r".*"~r"^http://'"${address}"':8080/.*$"~' \
-                -e '/"mywiki"/s~mywiki~'"$1"'~' \
+            sed -e '/"'${wikiName}'"/'"{p; s/.localhost/.${lanName}.lan/}" \
                 -i farmconfig.py;
-            sed \
-                -e '/"mywiki"/{s/ (/ #(/; p; s/ #(/ (/; s/ *#.*//}' \
-                -e '/"mywiki"/s~r".*"~r"^http://'"${address}"':8080/.*$"~' \
-                -e '/"mywiki"/s~mywiki~'"$1"'~' \
+            sed -e '/"'${wikiName}'"/'"{p; s/.localhost/.${lanName}.lan/}" \
                 -i farmconfig.py || exit 1;
+            ;;
+          (vadatech)
+            echo "   " \
+            sed -e '/"'${wikiName}'"/'"{p; s/.localhost/.${lanName}.uk.lan/p; s/.uk.lan/.uk.lab/}" \
+                -i farmconfig.py;
+            sed -e '/"'${wikiName}'"/'"{p; s/.localhost/.${lanName}.uk.lan/p; s/.uk.lan/.uk.lab/}" \
+                -i farmconfig.py || exit 1;
+            ;;
+        esac
 
-            case "$site" in
-              (custards)
-                echo "   " \
-                sed -e '/"'$1'"/'"{p; s/.localhost/.$site.lan/}" \
-                    -i farmconfig.py;
-                sed -e '/"'$1'"/'"{p; s/.localhost/.$site.lan/}" \
-                    -i farmconfig.py || exit 1;
-                ;;
-              (vadatech)
-                echo "   " \
-                sed -e '/"'$1'"/'"{p; s/.localhost/.$site.uk.lan/p; s/.uk.lan/.uk.lab/}" \
-                    -i farmconfig.py;
-                sed -e '/"'$1'"/'"{p; s/.localhost/.$site.uk.lan/p; s/.uk.lan/.uk.lab/}" \
-                    -i farmconfig.py || exit 1;
-                ;;
-            esac
+        DoOrDie Deploy "/etc/moin/${wikiName}.py" /etc/moin/farmconfig.py;
 
-            DoOrDie Deploy /etc/moin/farmconfig.py;
-
-        cd - > /dev/null;
-    fi
+    cd - > /dev/null;
 
     echo "... starting standalone server";
     DoOrDie sudo service moin start;
