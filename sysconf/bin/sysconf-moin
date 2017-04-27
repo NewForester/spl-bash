@@ -8,7 +8,36 @@
 ##  NB:     The caller must source functions etc à la sysconf script.
 ##
 
-# do it
+function defineSteps
+{
+    local major="$1"; shift;
+    local minor=0;
+
+    minor=$((minor+1));
+    moinInstall=$major.$minor;
+
+    minor=$((minor+1));
+    moinConfigure=$major.$minor;
+
+    minor=$((minor+1));
+    moinDisable=$major.$minor.D;
+    moinEnable=$major.$minor.E;
+
+    minor=$((minor+1));
+    moinMyWiki=$major.$minor;
+
+    minor=$((minor+1));
+    moinLanguage=$major.$minor;
+
+    minor=$((minor+1));
+    moinTestWiki=$major.$minor.T;
+    moinCustardsWiki=$major.$minor.C;
+    moinItWiki=$major.$minor.I;
+    moinPhilWiki=$major.$minor.P;
+
+    minor=10;
+    moinVadatechWiki=$major.$minor.V;
+}
 
 function restoreWiki
 {
@@ -103,14 +132,17 @@ function moinConf
     local wwwRoot="/media/work/www-data";
     local moinRoot="${wwwRoot}/moin";
 
+    local major="$1"; shift;
+    defineSteps $major;
+
     case "$1" in
-      (26 | trac)
-        listOptions 26 moin;
+      ($major | moin)
+        listOptions sysconf-moin "$1";
         quit;
         ;;
 
-      (26.1 | moinInstall)
-        step="26.1 moinInstall";
+      ($moinInstall | moinInstall)
+        step="$moinInstall moinInstall";
         note "Install moin packages ...";
 
         installPackage apache2 libjs-jquery;
@@ -120,8 +152,8 @@ function moinConf
         installPackage python-moinmoin;
         ;;
 
-      (26.2 | moinConfigure)
-        step="26.2 moinConfigure";
+      ($moinConfigure | moinConfigure)
+        step="$moinConfigure moinConfigure";
         note "Configure the moin package ...";
 
         if ! mountpoint "${wwwRoot}" > /dev/null; then
@@ -139,24 +171,24 @@ function moinConf
         DoOrDie sudo update-rc.d moin defaults;
         ;;
 
-      (26.3.D | moinDisable)
-        step="26.3.D moinDisable";
+      ($moinDisable | moinDisable)
+        step="$moinDisable moinDisable";
         note "Disable moin standalone server ...";
 
         DoOrDie sudo invoke-rc.d moin stop;
         DoOrDie sudo update-rc.d moin disable;
         ;;
 
-      (26.3.E | moinEnable)
-        step="26.3.E moinEnable";
+      ($moinEnable | moinEnable)
+        step="$moinEnable moinEnable";
         note "Enable moin standalone server ...";
 
         DoOrDie sudo update-rc.d moin enable;
         DoOrDie sudo invoke-rc.d moin start;
         ;;
 
-      (26.4 | moinMyWiki)
-        step="26.4 moinMyWiki";
+      ($moinMyWiki | moinMyWiki)
+        step="$moinMyWiki moinMyWiki";
         note "Create a simple wiki ...";
 
         echo "... create home directory";
@@ -181,8 +213,8 @@ function moinConf
         cd - > /dev/null;
         ;;
 
-      (26.5 | moinLanguage)
-        step="26.5 moinLanguage";
+      ($moinLanguage | moinLanguage)
+        step="$moinLanguage moinLanguage";
         note "Install the English language help package ...";
 
         echo "... starting standalone server";
@@ -200,42 +232,45 @@ function moinConf
         echo "... next try sysconf moinTestWiki...";
         ;;
 
-      (26.6.T | moinTestWiki)
-        step="26.6.T moinTestWiki";
+      ($moinTestWiki | moinTestWiki)
+        step="$moinTestWiki moinTestWiki";
         note "Create/Restore the Test Wiki ...";
         restoreWiki "${moinRoot}" 'test' 'TestWiki';
         ;;
 
-      (26.6.C | moinCustardsWiki)
-        step="26.6.C moinCustardsWiki";
+      ($moinCustardsWiki | moinCustardsWiki)
+        step="$moinCustardsWiki moinCustardsWiki";
         note "Create/Restore the Custards Wiki ...";
         restoreWiki "${moinRoot}" 'custards' 'Custards';
         ;;
 
-      (26.6.I | moinItWiki)
-        step="26.6.I moinItWiki";
+      ($moinItWiki | moinItWiki)
+        step="$moinItWiki moinItWiki";
         note "Create/Restore the Custards IT Wiki ...";
         restoreWiki "${moinRoot}" 'it' 'Custards IT';
         ;;
 
-      (26.6.P | moinPhilWiki)
-        step="26.6.P moinPhilWiki";
+      ($moinPhilWiki | moinPhilWiki)
+        step="$moinPhilWiki moinPhilWiki";
         note "Create/Restore the Philately Wiki ...";
         restoreWiki "${moinRoot}" 'phil' 'Philately';
         ;;
 
-      (26.6.V | moinVadatechWiki)
-        step="26.6.V moinVadatechWiki";
+      ($moinVadatechWiki | moinVadatechWiki)
+        step="$moinVadatechWiki moinVadatechWiki";
         note "Create/Restore the Vadatech Wiki ...";
         restoreWiki "${moinRoot}" 'vadatech' 'Vadatech';
         ;;
 
-      (26.99)
-        step="26.99 sanityCheck";
+      ($major.99)
+        step="$major.99 sanityCheck";
         note "Checking moin ...";
-        listLoggedSteps ${1%.*} | while read step name status; do
+        listLoggedSteps $major | while read step name status; do
             printf "%-7s %-23s %s\n" $step $name $status;
             case "$installDist $name" in
+              (*moinInstall)
+                CheckCurrent /etc/{group,passwd};
+                ;;
               (*moinConfigure)
                 CheckOurOwn /etc/init.d/moin;
                 CheckCurrent /etc/{group,passwd};
@@ -266,7 +301,7 @@ function moinConf
 
       (*)
         badOption "$1";
-        listOptions 26 moin;
+        listOptions sysconf-moin $major;
         quit 1;
         ;;
     esac

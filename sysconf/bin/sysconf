@@ -107,6 +107,11 @@ case "$1" in
     quit 1;
     ;;
 
+  (23* | moin*)
+    source sysconf-moin;
+    moinConf 23 "$@";
+    ;;
+
   (22* | apache*)
     source sysconf-apache;
     apacheConf 22 "$@";
@@ -125,11 +130,6 @@ case "$1" in
   (27* | trac*)
     source sysconf-trac;
     tracConf "$@";
-    ;;
-
-  (26* | moin*)
-    source sysconf-moin;
-    moinConf "$@";
     ;;
 
   (22* | mythtv*)
