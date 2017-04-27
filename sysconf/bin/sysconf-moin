@@ -183,26 +183,20 @@ function moinConf
         step="$moinMyWiki moinMyWiki";
         note "Create a simple wiki ...";
 
-        echo "... create home directory";
-        DoOrDie sudo mkdir -p ${moinRoot};
-        DoOrDie sudo chown www-data:www-data ${moinRoot};
-
         echo "... create mywiki instance";
-        DoOrDie sudo -u www-data mkdir -p ${moinRoot}/mywiki;
-        DoOrDie sudo -u www-data cp -pR /usr/share/moin/data ${moinRoot}/mywiki;
-        DoOrDie sudo -u www-data cp -pR /usr/share/moin/underlay ${moinRoot}/mywiki;
-        DoOrDie sudo -u www-data chmod -R ug+rwX ${moinRoot}/mywiki;
-        DoOrDie sudo -u www-data chmod -R o-rwx ${moinRoot}/mywiki;
+        local mywiki="${moinRoot}/mywiki";
+
+        DoOrDie sudo -u www-data mkdir -p "${mywiki}";
+        DoOrDie sudo -u www-data cp -pR /usr/share/moin/data "${mywiki}";
+        DoOrDie sudo -u www-data cp -pR /usr/share/moin/underlay "${mywiki}";
+        DoOrDie sudo -u www-data chmod -R ug+rwX "${mywiki}";
+        DoOrDie sudo -u www-data chmod -R o-rwx "${mywiki}";
 
         echo "... configure standalone server to use the mywiki instance";
         DoOrDie sudo cp -pf /usr/share/moin/server/wikiserverconfig.py /etc/moin/;
+
         DoOrDie CopyToKeep /etc/moin/{mywiki.py,farmconfig.py,wikiserverconfig.py};
         DoOrDie ApplyPatch /etc/moin/{mywiki.py,farmconfig.py,wikiserverconfig.py};
-
-        cd keep/etc/moin > /dev/null;
-            DoOrDie sed -e "/hostname/s/'localhost'/'${HOSTNAME}'/" -i wikiserverconfig.py;
-            DoOrDie Deploy /etc/moin/wikiserverconfig.py;
-        cd - > /dev/null;
         ;;
 
       ($moinLanguage | moinLanguage)
@@ -215,8 +209,8 @@ function moinConf
         echo "... in a browser enter ...";
         echo "... http://${HOSTNAME}:8080/LanguageSetup ...";
         echo "... enable cookies and probably scripts ...";
-        echo "... select login and create an account for debian ...";
-        echo "... select login and login in as debian ...";
+        echo "... select login and create an account for ${USER} ...";
+        echo "... select login and login in as ${USER} ...";
         echo "... in the browser enter ...";
         echo "... http://${HOSTNAME}:8080/LanguageSetup?action=language_setup ...";
         echo "... choose English ...";
