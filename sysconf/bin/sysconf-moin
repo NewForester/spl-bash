@@ -129,8 +129,7 @@ function restoreWiki
 
 function moinConf
 {
-    local wwwRoot="/media/work/www-data";
-    local moinRoot="${wwwRoot}/moin";
+    local moinRoot="/media/work/www-data/moin";
 
     local major="$1"; shift;
     defineSteps $major;
@@ -145,10 +144,6 @@ function moinConf
         step="$moinInstall moinInstall";
         note "Install moin packages ...";
 
-        installPackage apache2 libjs-jquery;
-        installPackage python-pygments;
-        installPackage python-crypto python-openssl;
-        installPackage fckeditor;
         installPackage python-moinmoin;
         ;;
 
@@ -156,16 +151,13 @@ function moinConf
         step="$moinConfigure moinConfigure";
         note "Configure the moin package ...";
 
-        if ! mountpoint "${wwwRoot}" > /dev/null; then
-            note ... oops ... "${wwwRoot}" is not a mountpoint
-            exit 1;
+        if [[ ! -b "/dev/${HOSTNAME}/work_www-data" ]]; then
+            note "www volume does not exist ... bailing";
+            quit 1;
         fi
 
-        DoOrDie sudo -u www-data mkdir -p ${moinRoot};
-
-        addToGroup "${USER}" www-data;
-        addToGroup www-data users;
-        DoOrDie SaveCurrent /etc/group;
+        DoOrDie sudo -u www-data mkdir -p "${moinRoot}";
+        DoOrDie sudo -u www-data chmod g+w "${moinRoot}";
 
         DoOrDie InstallOurOwn /etc/init.d/moin;
         DoOrDie sudo update-rc.d moin defaults;
@@ -273,7 +265,6 @@ function moinConf
                 ;;
               (*moinConfigure)
                 CheckOurOwn /etc/init.d/moin;
-                CheckCurrent /etc/{group,passwd};
                 ;;
               (*moinMyWiki)
                 CheckOriginal /etc/moin/{mywiki.py,farmconfig.py,wikiserverconfig.py};
