@@ -37,6 +37,8 @@ function defineSteps
 
     minor=$((minor+1));
     tracIniFile=$major.$minor;
+
+    minor=$((minor+1));
     tracPluginBlog=$major.$minor.B;
     tracPluginChild=$major.$minor.C;
 
@@ -72,6 +74,43 @@ function echoInstructions
     echo "... try http://localhost:8081 in your browser";
     echo "... $1";
     echo "... use ^C to kill and continue when ready";
+}
+
+function installPlugin
+{
+    local name="$1" && shift;
+    local plugin="$1" && shift;
+    local rev="$1" && shift;
+    local version="$1" && shift;
+
+    local egg=$(ls -d "/usr/local/lib/python2.7/dist-packages/${name}"*.egg 2> /dev/null);
+
+    if [[ -n "${egg}" ]]; then
+        note "... ${plugin} already installed";
+        return;
+    fi
+
+    note "... install ${plugin}";
+
+    local where="${PWD}";
+
+        cd ~/tmp > /dev/null;
+
+        DoOrDie sudo rm -fr "${plugin}" "${plugin}".zip;
+
+        DoOrDie wget "'https://trac-hacks.org/browser/${plugin}?rev=${rev}&format=zip'" -O "${plugin}".zip;
+
+        DoOrDie unzip "${plugin}";
+
+        cd "${plugin}/${version}" > /dev/null;
+
+        DoOrDie sudo python setup.py install;
+
+        cd ~/tmp > /dev/null;
+
+        DoOrDie sudo rm -fr "${plugin}" "${plugin}".zip "${name}.egg-info";
+
+    cd "${where}";
 }
 
 function tracConf
@@ -242,24 +281,29 @@ function tracConf
         step="$tracPluginBlog tracPluginBlog:${env}";
         note "Add the blog plugin to trac environment ${env^} ...";
 
-        DoOrDie cp -p "${tracDir}/conf/trac.ini" "/tmp/trac.ini.$$";
-        sed -e '/^\[components]/a\
-tracfullblog.* = enabled' -i "/tmp/trac.ini.$$";
-        sed -e "/mainnav =/s/= \(.*\)/= blog,\1/" -i "/tmp/trac.ini.$$";
-        sed -e '/^\[fullblog]/,/^$/d' -e '/^\[fullblog]/,$d' -i "/tmp/trac.ini.$$";
-        sed -e '/^\[fullblog]/,/^$/p;d' -e '/^\[fullblog]/,$p;d' -e d \
-            "${tracDir}/conf/trac.ini" >> "/tmp/trac.ini.$$";
+        # DoOrDie sudo pip install TracFullBlogPlugin;
+        installPlugin TracFullBlogPlugin fullblogplugin 16643 0.11;
 
-        DoOrDie inisort "/tmp/trac.ini.$$" > "/tmp/${env}.ini.$$";
-        DoOrDie sudo -u www-data cp -p "/tmp/${env}.ini.$$" "${tracDir}/conf/trac.ini";
+        note "... enable plugin in trac.ini";
 
+        DoOrDie sudo -u www-data cp -pf "${tracDir}/conf/"trac.{ini,bkp};
+
+        DoOrDie sudo -u www-data trac-admin "${tracDir}" config set components "'tracfullblog.*'" enabled;
         DoOrDie sudo -u www-data trac-admin "${tracDir}" upgrade;
+        DoOrDie sudo -u www-data trac-admin "${tracDir}" wiki upgrade;
 
-        DoOrDie sudo -u www-data trac-admin "${tracDir}" permission add debian BLOG_ADMIN;
+        local mainnav=$(sudo -u www-data trac-admin "${tracDir}" config get trac mainnav);
+        mainnav="${mainnav/blog, /}";
+        mainnav="${mainnav/, blog/}";
+        DoOrDie sudo -u www-data trac-admin "${tracDir}" config set trac mainnav "'blog, ${mainnav}'";
+
+        note "... update trac permissions";
+
+        sudo -u www-data trac-admin "${tracDir}" permission remove "debian" BLOG_ADMIN 2> /dev/null;
+
+        DoOrDie sudo -u www-data trac-admin "${tracDir}" permission add "${USER}" BLOG_ADMIN;
         DoOrDie sudo -u www-data trac-admin "${tracDir}" permission add anonymous BLOG_VIEW;
         DoOrDie sudo -u www-data trac-admin "${tracDir}" permission add authenticated BLOG_COMMENT BLOG_CREATE BLOG_MODIFY_OWN;
-
-        # DoOrDie sudo -u www-data diff -Naur "${tracDir}/conf/trac.ini{.kkk,}";
         ;;
 
       ($tracPluginChild | tracPluginChild)
@@ -267,20 +311,14 @@ tracfullblog.* = enabled' -i "/tmp/trac.ini.$$";
         step="$tracPluginChild tracPluginChild:${env}";
         note "Add child tickets to trac environment ${env^} ...";
 
-        DoOrDie cp -p "${tracDir}/conf/trac.ini" "/tmp/trac.ini.$$";
-        sed -e '/^\[components]/a\
-childtickets.* = enabled' -i "/tmp/trac.ini.$$";
-        sed -e '/^\[childtickets]/,/^$/d' -e '/^\[childtickets]/,$d' -i "/tmp/trac.ini.$$";
-        sed -e '/^\[childtickets]/,/^$/p;d' -e '/^\[childtickets]/,$p;d' -e d \
-            "${tracDir}/conf/trac.ini" >> "/tmp/trac.ini.$$";
-        sed -e '/^\[ticket-custom]/,/^$/d' -e '/^\[ticket-custom]/,$d' -i "/tmp/trac.ini.$$";
-        sed -e '/^\[ticket-custom]/,/^$/p;d' -e '/^\[ticket-custom]/,$p;d' -e d \
-            "${tracDir}/conf/trac.ini" >> "/tmp/trac.ini.$$";
+        # DoOrDie sudo pip install TracChildTickets;
+        installPlugin Tracchildtickets childticketsplugin 16643 trunk;
 
-        DoOrDie inisort "/tmp/trac.ini.$$" > "/tmp/${env}.ini.$$";
-        DoOrDie sudo -u www-data cp -p "/tmp/${env}.ini.$$" "${tracDir}/conf/trac.ini";
+        note "... enable plugin in trac.ini";
 
-        # DoOrDie sudo -u www-data diff -Naur "${tracDir}/conf/trac.ini{.kkk,}";
+        DoOrDie sudo -u www-data cp -pf "${tracDir}/conf/"trac.{ini,bkp};
+
+        DoOrDie sudo -u www-data trac-admin "${tracDir}" config set components "'childtickets.*'" enabled;
         ;;
 
       ($tracComponentEnums | tracComponentEnums)
