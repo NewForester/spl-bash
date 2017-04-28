@@ -215,32 +215,26 @@ function tracConf
       ($tracIniFile | tracIniFile)
         checkEnvironment exists;
         step="$tracIniFile tracIniFile:${env}";
-        note "Revise trac.ini of trac environment ${env^} ...";
+        note "Revise the trac.ini file of trac environment ${env^} ...";
 
-# trac-admin config get <section> <option>
-# trac-admin config set <section> <option> <value>
+        DoOrDie sudo -u www-data cp -pf "${tracDir}/conf/"trac.{ini,bkp};
 
-        DoOrDie cp -p "${tracDir}/conf/trac.ini" "/tmp/trac.ini.$$";
+        read -p "Enter one line description for project (aka trac environment): " description;
 
-        sed -e '/^\[components]/,/^$/d' -e '/^\[components]/,$d' -i "/tmp/trac.ini.$$";
-        cat >> "/tmp/trac.ini.$$" << EOF
-[components]
-trac.ticket.report.* = disabled
-EOF
-        sed -e "/alt =/s/=.*/= ${env^}/" -e "/src =/s/=.*/= site\/${env}.png/" -i "/tmp/trac.ini.$$";
-        sed -e '/default.*query/s/$/\&order=milestone\&group=component/' -i "/tmp/trac.ini.$$";
-        sed -e '/^\[intertrac]/,/^$/d' -e '/^\[intertrac]/,$d' -i "/tmp/trac.ini.$$";
-        sed -e '/^\[intertrac]/,/^$/p;d' -e '/^\[intertrac]/,$p;d' -e d \
-            "${tracDir}/conf/trac.ini" >> "/tmp/trac.ini.$$";
-        sed -e '/^\[logging]/,/^$/d' -e '/^\[logging]/,$d' -i "/tmp/trac.ini.$$";
-        sed -e '/^\[logging]/,/^$/p;d' -e '/^\[logging]/,$p;d' -e d \
-            "${tracDir}/conf/trac.ini" >> "/tmp/trac.ini.$$";
+#        DoOrDie sudo -u www-data trac-admin "${tracDir}" config set components "'trac.ticket.report.*'" disabled;
 
-        DoOrDie inisort "/tmp/trac.ini.$$" > "/tmp/${env}.ini.$$";
-        nano "/tmp/${env}.ini.$$";
-        DoOrDie sudo -u www-data cp -p "/tmp/${env}.ini.$$" "${tracDir}/conf/trac.ini";
+        DoOrDie sudo -u www-data trac-admin "${tracDir}" config set header_logo alt "'${env^}'";
+        DoOrDie sudo -u www-data trac-admin "${tracDir}" config set header_logo src "'site/${env}.png'";
 
-        # DoOrDie sudo -u www-data diff -Naur "${tracDir}/conf/trac.ini{.kkk,}";
+        DoOrDie sudo -u www-data trac-admin "${tracDir}" config set logging log_type file;
+        DoOrDie sudo -u www-data trac-admin "${tracDir}" config set logging log_level WARNING;
+
+        DoOrDie sudo -u www-data trac-admin "${tracDir}" config set project descr "'${description}'";
+
+        DoOrDie sudo -u www-data trac-admin "${tracDir}" config set query default_anonymous_query \
+            "'status!=closed&order=milestone&group=component&cc~=\$USER'";
+        DoOrDie sudo -u www-data trac-admin "${tracDir}" config set query default_query \
+            "'status!=closed&order=milestone&group=component&owner=\$USER'";
         ;;
 
       ($tracPluginBlog | tracPluginBlog)
