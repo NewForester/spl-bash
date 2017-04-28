@@ -27,9 +27,8 @@ function defineSteps
     tracEnable=$major.$minor.E;
 
     minor=$((minor+1));
-    tracCreate=$major.$minor;
+    tracCreate=$major.$minor.C;
     tracRestore=$major.$minor.R;
-    tracUpgrade=$major.$minor.U;
     tracCreateCheck=$major.$minor.T;
 
     minor=$((minor+1));
@@ -160,10 +159,11 @@ function tracConf
 
         DoOrDie sudo -u www-data mkdir -p "${tracDir}";
         DoOrDie sudo -u www-data trac-admin "${tracDir}" initenv "${env^}" "sqlite:db/trac.db" > /dev/null;
-        DoOrDie sudo chmod -R g+r "${tracDir}";
 
-        DoOrDie inisort "${tracDir}/conf/trac.ini" > "/tmp/trac.ini.$$";
-        DoOrDie sudo -u www-data cp -p "/tmp/trac.ini.$$" "${tracDir}/conf/trac.ini.kkk";
+        DoOrDie sudo -u www-data chmod -R g+r "${tracDir}";
+        DoOrDie sudo -u www-data chmod g+w "${tracDir}/conf";
+
+        DoOrDie cp -pf "${tracDir}/conf/"trac.ini{,.kkk};
         ;;
 
       ($tracRestore | tracRestore)
@@ -171,23 +171,16 @@ function tracConf
         step="$tracRestore tracRestore:${env}";
         note "Restore trac environment ${env^} from backup ...";
 
-        DoOrDie sudo -u www-data mkdir -p "${tracRoot}";
         local backup="/media/share/backup/current/wiki-trac-${env}.tgz";
         DoOrDie sudo -u www-data tar -xzf "${backup}" -C "${tracRoot}";
-        ;;
 
-      ($tracUpgrade | tracUpgrade)
-        checkEnvironment exists;
-        step="$tracUpgrade tracUpgrade:${env}";
-        note "Upgrade trac environment ${env^} ...";
+        DoOrDie sudo -u www-data chmod -R g+r "${tracDir}";
+        DoOrDie sudo -u www-data chmod g+w "${tracDir}/conf";
+
+        DoOrDie cp -pf "${tracDir}/conf/"trac.ini{,.kkk};
 
         DoOrDie sudo -u www-data trac-admin "${tracDir}" upgrade;
         DoOrDie sudo -u www-data trac-admin "${tracDir}" wiki upgrade;
-
-        DoOrDie sudo chmod -R g+r "${tracDir}";
-
-        DoOrDie inisort "${tracDir}/conf/trac.ini" > "/tmp/trac.ini.$$";
-        DoOrDie sudo -u www-data cp -p "/tmp/trac.ini.$$" "${tracDir}/conf/trac.ini.kkk";
         ;;
 
       ($tracCreateCheck | tracCreateCheck)
@@ -195,8 +188,8 @@ function tracConf
         step="$tracCreateCheck tracCreateCheck:${env}";
         note "Check trac environment ${env^} created/restored ...";
 
-        echoInstructions "try the help pages - you can't login in or enter any data yet";
-        DoOrDie sudo -u www-data tracd --port 8081 -s "${tracDir}";
+        echoInstructions "try browsing the help pages - you can't login in or enter any data yet";
+        DoOrDie sudo -u www-data PKG_RESOURCES_CACHE_ZIP_MANIFESTS=1 tracd --port=8081 -s "${tracDir}";
         ;;
 
       ($tracPermissions | tracPermissions)
