@@ -197,7 +197,9 @@ function tracConf
         step="$tracPermissions tracPermissions:${env}";
         note "Add/update permissions for trac environment ${env^} ...";
 
-        DoOrDie sudo -u www-data trac-admin "${tracDir}" permission add debian TRAC_ADMIN WIKI_ADMIN;
+        sudo -u www-data trac-admin "${tracDir}" permission remove "debian" TRAC_ADMIN WIKI_ADMIN 2> /dev/null;
+
+        DoOrDie sudo -u www-data trac-admin "${tracDir}" permission add "${USER}" TRAC_ADMIN WIKI_ADMIN;
         DoOrDie sudo -u www-data trac-admin "${tracDir}" permission add authenticated TICKET_EDIT_DESCRIPTION WIKI_RENAME;
         ;;
 
@@ -206,8 +208,8 @@ function tracConf
         step="$tracPermissionsCheck tracPermissionsCheck:${env}";
         note "Check permissions of trac environment ${env^} ...";
 
-        echoInstructions "try to login as debian and check users and permissions";
-        DoOrDie sudo -u www-data tracd --port=8081 -s --basic-auth="*,${tracRoot}/.htpasswd,trac" "${tracDir}";
+        echoInstructions "try to login as "${USER}" and check users and permissions";
+        DoOrDie sudo -u www-data PKG_RESOURCES_CACHE_ZIP_MANIFESTS=1 tracd --port=8081 -s --basic-auth="*,${tracRoot}/.htpasswd,trac" "${tracDir}";
         ;;
 
       ($tracIniFile | tracIniFile)
