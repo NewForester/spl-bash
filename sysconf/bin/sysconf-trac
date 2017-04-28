@@ -42,8 +42,8 @@ function defineSteps
     tracPluginBlog=$major.$minor.B;
     tracPluginChild=$major.$minor.C;
 
-    minor=$((minor+1));
-    tracComponentEnums=$major.$minor;
+    minor=10;
+    tracEnumerations=$major.$minor;
 }
 
 function checkEnvironment
@@ -321,26 +321,40 @@ function tracConf
         DoOrDie sudo -u www-data trac-admin "${tracDir}" config set components "'childtickets.*'" enabled;
         ;;
 
-      ($tracComponentEnums | tracComponentEnums)
-        checkEnvironment exists;
-        step="$tracComponentEnums tracComponentEnums:${env}";
-        note "Revise component enumerations of trac environment ${env^} ...";
+      ($tracEnumerations | tracEnumerations)
+#        checkEnvironment exists;
+#        step="$tracEnumerations tracEnumerations:${env}";
+#        note "Revise enumerations of trac environment ${env^} ...";
 
-        DoOrDie rm -f "/tmp/${env}.db.$$";
-        DoOrDie cp -p "${tracDir}/db/trac.db" "/tmp/${env}.db.$$";
+        cat << 'EOF'
+There are a number of enumerations you may want to set up to be the same as some other trac environment:
 
-        sqlite3 "/tmp/${env}.db.$$" << EOF
-.output /tmp/${env}.sql.$$
-.dump enum
-.dump component
-.exit
+    milestone
+    permission
+    priority
+    resolution
+    session
+    severity
+    ticket_type
+    version
+
+Some of these are listed in descending priority order.
+
+It is suggested you script this ...
+
+... you need to list the enumerations you want to transfer:
+
+    sudo -u www-data trac-admin "${tracDir}" ${enumeration} list
+
+... the lists are not in suitable for feeding back-in so you'd need to do that (suggest a while loop):
+
+    sudo -u www-data trac-admin "${tracDir}" ${enumeration} add ${name}
+
+... but first something similiar to remove the old enumeration values.
+
+Best of luck
 EOF
-        sed -e '/CREATE/h;s/CREATE \(.*\) (/DROP \1;/p' -e '/DROP/g' -i "/tmp/${env}.sql.$$";
-        nano "/tmp/${env}.sql.$$";
-        DoOrDie cp -p "${tracDir}/db/trac.db" "/tmp/${env}.db.$$";
-        sqlite3 "/tmp/${env}.db.$$" < "/tmp/${env}.sql.$$";
-
-        DoOrDie sudo -u www-data cp -p "/tmp/${env}.db.$$" "${tracDir}/db/trac.db";
+        quit;
         ;;
 
       ($major.99)
