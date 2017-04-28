@@ -77,8 +77,7 @@ function echoInstructions
 
 function tracConf
 {
-    local wwwRoot=/media/work/www-data;
-    local tracRoot="${wwwRoot}/trac";
+    local tracRoot="/media/work/www-data/trac";
 
     local major="$1"; shift;
     defineSteps $major;
@@ -96,10 +95,6 @@ function tracConf
         step="$tracInstall tracInstall";
         note "Install trac packages ...";
 
-        installPackage apache2 libjs-jquery;
-        installPackage python-setuptools python-docutils;
-        installPackage python-subversion python-pysqlite2;
-        installPackage python-pygments python-genshi;
         installPackage trac;
         ;;
 
@@ -107,16 +102,13 @@ function tracConf
         step="$tracConfigure tracConfigure";
         note "Configure the trac package ...";
 
-        if ! mountpoint "${wwwRoot}" > /dev/null; then
-            note ... oops ... "${wwwRoot}" is not a mountpoint;
-            exit 1;
+        if [[ ! -b "/dev/${HOSTNAME}/work_www-data" ]]; then
+            note "www volume does not exist ... bailing";
+            quit 1;
         fi
 
         DoOrDie sudo -u www-data mkdir -p "${tracRoot}";
-
-        addToGroup "${USER}" www-data;
-        addToGroup www-data users;
-        DoOrDie SaveCurrent /etc/group;
+        DoOrDie sudo -u www-data chmod g+w "${tracRoot}";
 
         DoOrDie InstallOurOwn /etc/init.d/trac;
         DoOrDie sudo update-rc.d trac defaults;
@@ -134,6 +126,7 @@ function tracConf
         else
             echo "Create authentication file ...";
         fi
+        DoOrDie touch "${tracRoot}/.htpasswd";
 
         echo "... paste password entries into this console and press ^D when done ...";
         echo "... for new entries, use http://aspirine.org/htpasswd_en.html ...";
@@ -334,7 +327,6 @@ EOF
                 ;;
               (*tracConfigure)
                 CheckOurOwn /etc/init.d/trac;
-                CheckCurrent /etc/{group,passwd};
                 ;;
             esac
         done
