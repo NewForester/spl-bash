@@ -8,7 +8,42 @@
 ##  NB:     The caller must source functions etc à la sysconf script.
 ##
 
-# do it
+function defineSteps
+{
+    local major="$1"; shift;
+    local minor=0;
+
+    minor=$((minor+1));
+    tracInstall=$major.$minor;
+
+    minor=$((minor+1));
+    tracConfigure=$major.$minor;
+
+    minor=$((minor+1));
+    tracUsers=$major.$minor;
+
+    minor=$((minor+1));
+    tracDisable=$major.$minor.D;
+    tracEnable=$major.$minor.E;
+
+    minor=$((minor+1));
+    tracCreate=$major.$minor;
+    tracRestore=$major.$minor.R;
+    tracUpgrade=$major.$minor.U;
+    tracCreateCheck=$major.$minor.T;
+
+    minor=$((minor+1));
+    tracPermissions=$major.$minor;
+    tracPermissionsCheck=$major.$minor.T;
+
+    minor=$((minor+1));
+    tracIniFile=$major.$minor;
+    tracPluginBlog=$major.$minor.B;
+    tracPluginChild=$major.$minor.C;
+
+    minor=$((minor+1));
+    tracComponentEnums=$major.$minor;
+}
 
 function echoInstructions
 {
@@ -23,17 +58,20 @@ function tracConf
     local wwwRoot=/media/work/www-data;
     local tracRoot="${wwwRoot}/trac";
 
+    local major="$1"; shift;
+    defineSteps $major;
+
     local db=$2;
     local ref=$3;
 
     case "$1" in
-      (27 | trac)
-        listOptions 27 trac;
+      ($major | trac)
+        listOptions sysconf-trac "$1";
         quit;
         ;;
 
-      (27.1 | tracInstall)
-        step="27.1 tracInstall";
+      ($tracInstall | tracInstall)
+        step="$tracInstall tracInstall";
         note "Install trac packages ...";
 
         installPackage apache2 libjs-jquery;
@@ -43,8 +81,8 @@ function tracConf
         installPackage trac;
         ;;
 
-      (27.2 | tracConfigure)
-        step="27.2 tracConfigure";
+      ($tracConfigure | tracConfigure)
+        step="$tracConfigure tracConfigure";
         note "Configure the trac package ...";
 
         if ! mountpoint "${wwwRoot}" > /dev/null; then
@@ -62,8 +100,8 @@ function tracConf
         DoOrDie sudo update-rc.d trac defaults;
         ;;
 
-      (27.3 | tracUsers)
-        step="27.3 tracUsers";
+      ($tracUsers | tracUsers)
+        step="$tracUsers tracUsers";
         note "Create/update trac users and their passwords ...";
 
         if [[ -e "${tracRoot}/.htpasswd" ]]; then
@@ -84,29 +122,29 @@ function tracConf
         echo "------------------------------------------------";
         ;;
 
-      (27.4.D | tracDisable)
-        step="27.4.D tracDisable";
+      ($tracDisable | tracDisable)
+        step="$tracDisable tracDisable";
         note "Disable trac standalone server ...";
 
         DoOrDie sudo invoke-rc.d trac stop;
         DoOrDie sudo update-rc.d trac disable;
         ;;
 
-      (27.4.E | tracEnable)
-        step="27.4.E tracEnable";
+      ($tracEnable | tracEnable)
+        step="$tracEnable tracEnable";
         note "Enable trac standalone server ...";
 
         DoOrDie sudo update-rc.d trac enable;
         DoOrDie sudo invoke-rc.d trac start;
         ;;
 
-      (27.5 | tracCreate)
+      ($tracCreate | tracCreate)
         if [[ -z "${db}" ]]; then
             note "Need a trac environment name";
             quit;
         fi
 
-        step="27.5 tracCreate:${db}";
+        step="$tracCreate tracCreate:${db}";
         note "Create new trac environment ${db} ...";
 
         DoOrDie sudo -u www-data mkdir -p "${tracRoot}/${db}";
@@ -117,13 +155,13 @@ function tracConf
         DoOrDie sudo -u www-data cp -p "/tmp/trac.ini.$$" "${tracRoot}/${db}/conf/trac.ini.kkk";
         ;;
 
-      (27.5.R | tracRestore)
+      ($tracRestore | tracRestore)
         if [[ -z "${db}" ]]; then
             note "Need a trac environment name";
             quit;
         fi
 
-        step="27.5.R tracRestore:${db}";
+        step="$tracRestore tracRestore:${db}";
         note "Restore backup of trac environment ${db} ...";
 
         DoOrDie sudo -u www-data mkdir -p "${tracRoot}";
@@ -131,13 +169,13 @@ function tracConf
         DoOrDie sudo -u www-data tar -xzf "${backup}" -C "${tracRoot}";
         ;;
 
-      (27.5.U | tracUpgrade)
+      ($tracUpgrade | tracUpgrade)
         if [[ -z "${db}" ]]; then
             note "Need a trac environment name";
             quit;
         fi
 
-        step="27.5.U tracUpgrade:${db}";
+        step="$tracUpgrade tracUpgrade:${db}";
         note "Upgrade trac environment ${db} ...";
 
         DoOrDie sudo -u www-data trac-admin "${tracRoot}/${db}" upgrade;
@@ -149,46 +187,46 @@ function tracConf
         DoOrDie sudo -u www-data cp -p "/tmp/trac.ini.$$" "${tracRoot}/${db}/conf/trac.ini.kkk";
         ;;
 
-      (27.5.T | tracCreateCheck)
+      ($tracCreateCheck | tracCreateCheck)
         if [[ -z "${db}" ]]; then
             note "Need a trac environment name";
             quit;
         fi
 
-        step="27.5.T tracCreateCheck:${db}";
+        step="$tracCreateCheck tracCreateCheck:${db}";
         note "Check new trac environment ${db} ...";
 
         echoInstructions "try the help pages - you can't login in or enter any data yet";
         DoOrDie sudo -u www-data tracd --port 8081 -s "${tracRoot}/${db}";
         ;;
 
-      (27.6 | tracPermissions)
+      ($tracPermissions | tracPermissions)
         if [[ -z "${db}" ]]; then
             note "Need a trac environment name";
             quit;
         fi
 
-        step="27.6 tracPermissions:${db}";
+        step="$tracPermissions tracPermissions:${db}";
         note "Add permissions to new trac environment ${db} ...";
 
         DoOrDie sudo -u www-data trac-admin "${tracRoot}/${db}" permission add debian TRAC_ADMIN WIKI_ADMIN;
         DoOrDie sudo -u www-data trac-admin "${tracRoot}/${db}" permission add authenticated TICKET_EDIT_DESCRIPTION WIKI_RENAME;
         ;;
 
-      (27.6.T | tracPermissionsCheck)
+      ($tracPermissionsCheck | tracPermissionsCheck)
         if [[ -z "${db}" ]]; then
             note "Need a trac environment name";
             quit;
         fi
 
-        step="27.6.T tracPermissionsCheck:${db}";
+        step="$tracPermissionsCheck tracPermissionsCheck:${db}";
         note "Check permissions of new trac environment ${db} ...";
 
         echoInstructions "try to login as debian and check users and permissions";
         DoOrDie sudo -u www-data tracd --port=8081 -s --basic-auth="*,${tracRoot}/.htpasswd,trac" "${tracRoot}/${db}";
         ;;
 
-      (27.7 | tracIniFile)
+      ($tracIniFile | tracIniFile)
         if [[ -z "${db}" ]]; then
             note "Need a trac environment name";
             quit;
@@ -199,7 +237,7 @@ function tracConf
             quit;
         fi
 
-        step="27.7 tracIniFile:${db}";
+        step="$tracIniFile tracIniFile:${db}";
         note "Hack trac.ini of new trac environment ${db} ...";
 
 # trac-admin config get <section> <option>
@@ -228,7 +266,7 @@ EOF
         # DoOrDie sudo -u www-data diff -Naur "${tracRoot}/${db}/conf/trac.ini{.kkk,}";
         ;;
 
-      (27.7.B | tracPluginBlog)
+      ($tracPluginBlog | tracPluginBlog)
         if [[ -z "${db}" ]]; then
             note "Need a trac environment name";
             quit;
@@ -239,7 +277,7 @@ EOF
             quit;
         fi
 
-        step="27.7.B tracPluginBlog:${db}";
+        step="$tracPluginBlog tracPluginBlog:${db}";
         note "Add blog plugin to new trac environment ${db} ...";
 
         DoOrDie cp -p "${tracRoot}/${db}/conf/trac.ini" "/tmp/trac.ini.$$";
@@ -262,7 +300,7 @@ tracfullblog.* = enabled' -i "/tmp/trac.ini.$$";
         # DoOrDie sudo -u www-data diff -Naur "${tracRoot}/${db}/conf/trac.ini{.kkk,}";
         ;;
 
-      (27.7.C | tracPluginChild)
+      ($tracPluginChild | tracPluginChild)
         if [[ -z "${db}" ]]; then
             note "Need a trac environment name";
             quit;
@@ -273,7 +311,7 @@ tracfullblog.* = enabled' -i "/tmp/trac.ini.$$";
             quit;
         fi
 
-        step="27.7.C tracPluginChild:${db}";
+        step="$tracPluginChild tracPluginChild:${db}";
         note "Add child tickets to new trac environment ${db} ...";
 
         DoOrDie cp -p "${tracRoot}/${db}/conf/trac.ini" "/tmp/trac.ini.$$";
@@ -292,7 +330,7 @@ childtickets.* = enabled' -i "/tmp/trac.ini.$$";
         # DoOrDie sudo -u www-data diff -Naur "${tracRoot}/${db}/conf/trac.ini{.kkk,}";
         ;;
 
-      (27.8 | tracComponentEnums)
+      ($tracComponentEnums | tracComponentEnums)
         if [[ -z "${db}" ]]; then
             note "Need a trac environment name";
             quit;
@@ -303,7 +341,7 @@ childtickets.* = enabled' -i "/tmp/trac.ini.$$";
             quit;
         fi
 
-        step="27.8 tracComponentEnums:${db}";
+        step="$tracComponentEnums tracComponentEnums:${db}";
         note "Revise component and other enumerations for new trac environment ${db} ...";
 
         DoOrDie rm -f "/tmp/${db}.db.$$";
@@ -323,12 +361,15 @@ EOF
         DoOrDie sudo -u www-data cp -p "/tmp/${db}.db.$$" "${tracRoot}/${db}/db/trac.db";
         ;;
 
-      (27.99)
-        step="27.99 sanityCheck";
+      ($major.99)
+        step="$major.99 sanityCheck";
         note "Checking trac ...";
-        listLoggedSteps ${1%.*} | while read step name status; do
+        listLoggedSteps $major | while read step name status; do
             printf "%-7s %-23s %s\n" $step $name $status;
             case "$installDist $name" in
+              (*tracInstall)
+                CheckCurrent /etc/{group,passwd};
+                ;;
               (*tracConfigure)
                 CheckOurOwn /etc/init.d/trac;
                 CheckCurrent /etc/{group,passwd};
@@ -340,7 +381,7 @@ EOF
 
       (*)
         badOption "$1";
-        listOptions 27 trac;
+        listOptions sysconf-trac $major;
         quit 1;
         ;;
     esac
