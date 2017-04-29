@@ -26,8 +26,7 @@ function defineSteps
 
 function delugeConf
 {
-    local wwwRoot=/media/work/www-data;
-    local delugeRoot="${wwwRoot}/deluge";
+    local delugeRoot="/media/work/www-data/deluge";
 
     local major="$1"; shift;
     defineSteps $major;
@@ -49,19 +48,19 @@ function delugeConf
         step="$delugeConfigure delugeConfigure";
         note "Configure deluge daemon and server ...";
 
-        if ! mountpoint "${wwwRoot}" > /dev/null; then
-            note ... oops ... "${wwwRoot}" is not a mountpoint;
-            exit 1;
+        if [[ ! -b "/dev/${HOSTNAME}/work_www-data" ]]; then
+            note "www volume does not exist ... bailing";
+            quit 1;
         fi
 
+        DoOrDie sudo -u www-data mkdir -p "${delugeRoot}" "${delugeRoot}/${HOSTNAME}";
+        DoOrDie sudo -u www-data chmod g+w "${delugeRoot}" "${delugeRoot}/${HOSTNAME}";
+
         DoOrDie sudo -u www-data mkdir -p "${delugeRoot}/${HOSTNAME}/"{,downloads,torrents};
+        DoOrDie sudo -u www-data chmod g+w "${delugeRoot}/${HOSTNAME}/"{,downloads,torrents};
 
         DoOrDie sudo mkdir -p /var/log/deluge;
         DoOrDie sudo chown www-data:www-data /var/log/deluge;
-
-        addToGroup "${USER}" www-data;
-        addToGroup www-data users;
-        DoOrDie SaveCurrent /etc/group;
 
         DoOrDie InstallOurOwn /etc/{default,init.d,logrotate.d}/deluge;
         DoOrDie sudo update-rc.d deluge defaults;
@@ -94,7 +93,6 @@ function delugeConf
                 ;;
               (*delugeConfigure)
                 CheckOurOwn /etc/{default,init.d,logrotate.d}/deluge;
-                CheckCurrent /etc/{group,passwd};
                 ;;
             esac
         done
