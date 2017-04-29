@@ -8,28 +8,45 @@
 ##  NB:     The caller must source functions etc à la sysconf script.
 ##
 
-# do it
+function defineSteps
+{
+    local major="$1"; shift;
+    local minor=0;
+
+    minor=$((minor+1));
+    delugeInstall=$major.$minor;
+
+    minor=$((minor+1));
+    delugeConfigure=$major.$minor;
+
+    minor=$((minor+1));
+    delugeDisable=$major.$minor.D;
+    delugeEnable=$major.$minor.E;
+}
 
 function delugeConf
 {
     local wwwRoot=/media/work/www-data;
     local delugeRoot="${wwwRoot}/deluge";
 
+    local major="$1"; shift;
+    defineSteps $major;
+
     case "$1" in
-      (28 | deluge)
-        listOptions 28 deluge;
+      ($major | deluge)
+        listOptions sysconf-deluge "$1";
         quit;
         ;;
 
-      (28.1 | delugeInstall)
-        step="28.1 delugeInstall";
+      ($delugeInstall | delugeInstall)
+        step="$delugeInstall delugeInstall";
         note "Install deluge packages ...";
 
         installPackage deluged deluge-web;
         ;;
 
-      (28.2 | delugeConfigure)
-        step="28.2 delugeConfigure";
+      ($delugeConfigure | delugeConfigure)
+        step="$delugeConfigure delugeConfigure";
         note "Configure deluge daemon and server ...";
 
         if ! mountpoint "${wwwRoot}" > /dev/null; then
@@ -50,28 +67,31 @@ function delugeConf
         DoOrDie sudo update-rc.d deluge defaults;
         ;;
 
-      (28.3.D | delugeDisable)
-        step="28.3.D delugeDisable";
+      ($delugeDisable | delugeDisable)
+        step="$delugeDisable delugeDisable";
         note "Disable deluge daemon and server ...";
 
         DoOrDie sudo invoke-rc.d deluge stop;
         DoOrDie sudo update-rc.d deluge disable;
         ;;
 
-      (28.3.E | delugeEnable)
-        step="28.3.E delugeEnable";
+      ($delugeEnable | delugeEnable)
+        step="$delugeEnable delugeEnable";
         note "Enable deluge daemon and server ...";
 
         DoOrDie sudo update-rc.d deluge enable;
         DoOrDie sudo invoke-rc.d deluge start;
         ;;
 
-      (28.99)
-        step="28.99 sanityCheck";
+      ($major.99)
+        step="$major.99 sanityCheck";
         note "Checking deluge ...";
-        listLoggedSteps ${1%.*} | while read step name status; do
+        listLoggedSteps $major | while read step name status; do
             printf "%-7s %-23s %s\n" $step $name $status;
             case "$installDist $name" in
+              (*delugeInstall)
+                CheckCurrent /etc/{group,passwd};
+                ;;
               (*delugeConfigure)
                 CheckOurOwn /etc/{default,init.d,logrotate.d}/deluge;
                 CheckCurrent /etc/{group,passwd};
@@ -82,7 +102,7 @@ function delugeConf
 
       (*)
         badOption "$1";
-        listOptions 28 deluge;
+        listOptions sysconf-deluge $major;
         quit 1;
         ;;
     esac

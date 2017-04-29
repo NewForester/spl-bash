@@ -107,6 +107,11 @@ case "$1" in
     quit 1;
     ;;
 
+  (25* | deluge*)
+    source sysconf-deluge;
+    delugeConf 25 "$@";
+    ;;
+
   (24* | trac*)
     source sysconf-trac;
     tracConf 24 "$@";
@@ -125,11 +130,6 @@ case "$1" in
   (21* | mail*)
     source sysconf-mail;
     mailConf 21 "$@";
-    ;;
-
-  (28* | deluge*)
-    source sysconf-deluge;
-    delugeConf "$@";
     ;;
 
   (22* | mythtv*)
