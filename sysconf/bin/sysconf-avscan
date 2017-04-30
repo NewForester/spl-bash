@@ -8,26 +8,39 @@
 ##  NB:     The caller must source functions etc à la sysconf script.
 ##
 
-# do it
+function defineSteps
+{
+    local major="$1"; shift;
+    local minor=0;
+
+    minor=$((minor+1));
+    avscanInstall=$major.$minor;
+
+    minor=$((minor+1));
+    avscanConfigure=$major.$minor;
+}
 
 function avscanConf
 {
+    local major="$1"; shift;
+    defineSteps $major;
+
     case "$1" in
-      (32 | avscan)
-        listOptions 32 avscan;
+      ($major | avscan)
+        listOptions sysconf-avscan "$1";
         quit;
         ;;
 
-      (32.1 | avscanInstall)
-        step="32.1 avscanInstall";
+      ($avscanInstall | avscanInstall)
+        step="$avscanInstall avscanInstall";
         note "Install clamav packages ...";
 
         installPackage clamav;
         DoOrDie SaveCurrent /etc/{group,passwd};
         ;;
 
-      (32.2 | avscanConfigure)
-        step="32.2 avscanConfigure";
+      ($avscanConfigure | avscanConfigure)
+        step="$avscanConfigure avscanConfigure";
         note "Configure anti-virus ...";
 
         DoOrDie InstallOurOwn /etc/logrotate.d/avscan;
@@ -37,19 +50,21 @@ function avscanConf
         DoOrDie ApplyPatch /etc/crontab;
         ;;
 
-      (32.99)
-        step="32.99 sanityCheck";
+      ($major.99)
+        step="$major.99 sanityCheck";
         note "Checking avscan ...";
-        listLoggedSteps ${1%.*} | while read step name status; do
+        listLoggedSteps $major | while read step name status; do
             printf "%-7s %-23s %s\n" $step $name $status;
             case "$installDist $name" in
+              (*avscanInstall)
+                CheckCurrent /etc/{group,passwd};
+                ;;
               (*avscanConfigure)
                 CheckOurOwn /etc/logrotate.d/avscan;
                 CheckOurOwn /etc/avscan/{avscan-fs,avscan-mtab};
                 CheckOriginal /etc/crontab;
                 CheckPatch --opt /etc/crontab;
-                CheckCurrent /etc/{group,passwd};
-               ;;
+                ;;
             esac
         done
         quit;
@@ -57,7 +72,7 @@ function avscanConf
 
       (*)
         badOption "$1";
-        listOptions 32 avscan;
+        listOptions sysconf-avscan $major;
         quit 1;
         ;;
     esac

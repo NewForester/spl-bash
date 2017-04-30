@@ -107,6 +107,11 @@ case "$1" in
     quit 1;
     ;;
 
+  (26* | avscan*)
+    source sysconf-avscan;
+    avscanConf 26 "$@";
+    ;;
+
   (25* | deluge*)
     source sysconf-deluge;
     delugeConf 25 "$@";
