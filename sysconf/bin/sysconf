@@ -107,6 +107,11 @@ case "$1" in
     quit 1;
     ;;
 
+  (27* | kvm*)
+    source sysconf-kvm;
+    kvmConf 27 "$@";
+    ;;
+
   (26* | avscan*)
     source sysconf-avscan;
     avscanConf 26 "$@";
@@ -140,11 +145,6 @@ case "$1" in
   (22* | mythtv*)
     source sysconf-mythtv;
     mythtvConf "$@";
-    ;;
-
-  (21* | kvm*)
-    source sysconf-kvm;
-    kvmConf "$@";
     ;;
 
   (20* | apps*)

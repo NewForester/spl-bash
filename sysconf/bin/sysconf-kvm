@@ -18,24 +18,52 @@
 ##  NB:     The caller must source functions etc à la sysconf script.
 ##
 
-# do it
+function defineSteps
+{
+    local major="$1"; shift;
+    local minor=0;
+
+    minor=$((minor+1));
+    kvmInstall=$major.$minor;
+
+    minor=$((minor+1));
+    kvmSetup=$major.$minor;
+
+    minor=$((minor+1));
+    kvmInstallVde=$major.$minor;
+
+    minor=$((minor+1));
+    kvmConfigureVde=$major.$minor;
+
+    minor=$((minor+1));
+    kvmInstallQemu=$major.$minor;
+
+    minor=$((minor+1));
+    kvmSetupQemu=$major.$minor;
+
+    minor=$((minor+1));
+    kvmWxp=$major.$minor;
+}
 
 function kvmConf
 {
+    local major="$1"; shift;
+    defineSteps $major;
+
     case "$1" in
-      (21 | kvm)
-        listOptions 21 kvm;
+      ($major | kvm)
+        listOptions sysconf-kvm "$1";
         quit;
         ;;
 
-      (21.1 | kvmInstall)
-        step="21.1 kvmInstall";
+      ($kvmInstall | kvmInstall)
+        step="$kvmInstall kvmInstall";
         note "Install qemu-kvm ...";
         installPackage bridge-utils user-mode-linux qemu-kvm kpartx;
         ;;
 
-      (21.2 | kvmSetup)
-        step="21.2 kvmSetup";
+      ($kvmSetup | kvmSetup)
+        step="$kvmSetup kvmSetup";
         note "Set up qemu-kvm ...";
 
         echo "... neuter the unhelpful up/down scripts";
@@ -46,14 +74,14 @@ function kvmConf
         DoOrDie InstallOurOwn /etc/sudoers.d/vmif;
         ;;
 
-      (21.3 | kvmInstallVde)
-        step="21.3 kvmInstallVde";
+      ($kvmInstallVde | kvmInstallVde)
+        step="$kvmInstallVde kvmInstallVde";
         note "Install vde ...";
         installPackage dnsmasq vde2;
         ;;
 
-      (21.4 | kvmConfigureVde)
-        step="21.4 kvmConfigureVde";
+      ($kvmConfigureVde | kvmConfigureVde)
+        step="$kvmConfigureVde kvmConfigureVde";
         note "Configure dnsmasq ...";
 
         echo "... configure DNS for the vde";
@@ -61,14 +89,14 @@ function kvmConf
         DoOrDie ApplyPatch /etc/dnsmasq.conf;
         ;;
 
-      (21.5 | kvmInstallQemu)
-        step="21.5 kvmInstallQemu";
+      ($kvmInstallQemu | kvmInstallQemu)
+        step="$kvmInstallQemu kvmInstallQemu";
         note "Install qemu ...";
         installPackage qemu;
         ;;
 
-      (21.6 | kvmSetupQemu)
-        step="21.6 kvmSetupQemu";
+      ($kvmSetupQemu | kvmSetupQemu)
+        step="$kvmSetupQemu kvmSetupQemu";
         note "Setup qemu ...";
 
         echo "... neuter the unhelpful up/down scripts";
@@ -76,8 +104,8 @@ function kvmConf
         DoOrDie InstallOurOwn /etc/qemu-ifup;
         ;;
 
-      (21.7 | kvmWxp)
-        step="21.7 kvmWxp";
+      ($kvmWxp | kvmWxp)
+        step="$kvmWxp kvmWxp";
         note "Install desktop icon for Windows™ XP";
 #        DoOrDie FetchOurOwn /usr/share/applications/wpoX3.desktop.sh;
 #        cd keep/usr/share/applications > /dev/null;
@@ -88,20 +116,29 @@ function kvmConf
         quit 1;
         ;;
 
-      (21.99)
-        step="21.99 sanityCheck";
+      ($major.99)
+        step="$major.99 sanityCheck";
         note "Checking kvm ...";
-        listLoggedSteps ${1%.*} | while read step name status; do
+        listLoggedSteps $major | while read step name status; do
             printf "%-7s %-23s %s\n" $step $name $status;
             case "$installDist $name" in
+              (*kvmInstall)
+                CheckCurrent /etc/{group,passwd};
+                ;;
               (*kvmSetup)
                 CheckOriginal /etc/kvm/kvm-{ifup,ifdown};
                 CheckOurOwn /etc/kvm/kvm-{ifup,ifdown};
                 CheckOurOwn --sudo /etc/sudoers.d/vmif;
                 ;;
+              (*kvmInstallVde)
+                CheckCurrent /etc/{group,passwd};
+                ;;
               (*kvmConfigureVde)
                 CheckOriginal /etc/dnsmasq.conf;
                 CheckPatch /etc/dnsmasq.conf;
+                ;;
+              (*kvmInstallQemu)
+                CheckCurrent /etc/{group,passwd};
                 ;;
               (*kvmSetupQemu)
                 CheckOriginal /etc/qemu-ifup;
@@ -117,7 +154,7 @@ function kvmConf
 
       (*)
         badOption "$1";
-        listOptions 21 kvm;
+        listOptions sysconf-kvm $major;
         quit 1;
         ;;
     esac
