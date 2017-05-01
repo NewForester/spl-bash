@@ -30,12 +30,6 @@ function defineSteps
     kvmSetup=$major.$minor;
 
     minor=$((minor+1));
-    kvmInstallVde=$major.$minor;
-
-    minor=$((minor+1));
-    kvmConfigureVde=$major.$minor;
-
-    minor=$((minor+1));
     kvmInstallQemu=$major.$minor;
 
     minor=$((minor+1));
@@ -59,40 +53,28 @@ function kvmConf
       ($kvmInstall | kvmInstall)
         step="$kvmInstall kvmInstall";
         note "Install qemu-kvm ...";
-        installPackage bridge-utils user-mode-linux qemu-kvm kpartx;
+
+        installPackage bridge-utils qemu-kvm kpartx;
+        DoOrDie SaveCurrent /etc/group;
         ;;
 
       ($kvmSetup | kvmSetup)
         step="$kvmSetup kvmSetup";
         note "Set up qemu-kvm ...";
 
-        echo "... neuter the unhelpful up/down scripts";
-        DoOrDie CopyToKeep /etc/kvm/kvm-{ifup,ifdown};
-        DoOrDie InstallOurOwn /etc/kvm/kvm-{ifup,ifdown};
+        #echo "... neuter the unhelpful up/down scripts";
+        #DoOrDie CopyToKeep /etc/kvm/kvm-{ifup,ifdown};
+        #DoOrDie InstallOurOwn /etc/kvm/kvm-{ifup,ifdown};
 
         echo "... allow group kvm to create/destroy tunnel devices";
         DoOrDie InstallOurOwn /etc/sudoers.d/vmif;
         ;;
 
-      ($kvmInstallVde | kvmInstallVde)
-        step="$kvmInstallVde kvmInstallVde";
-        note "Install vde ...";
-        installPackage dnsmasq vde2;
-        ;;
-
-      ($kvmConfigureVde | kvmConfigureVde)
-        step="$kvmConfigureVde kvmConfigureVde";
-        note "Configure dnsmasq ...";
-
-        echo "... configure DNS for the vde";
-        DoOrDie CopyToKeep /etc/dnsmasq.conf;
-        DoOrDie ApplyPatch /etc/dnsmasq.conf;
-        ;;
-
       ($kvmInstallQemu | kvmInstallQemu)
         step="$kvmInstallQemu kvmInstallQemu";
         note "Install qemu ...";
-        installPackage qemu;
+
+        installPackage  qemu;
         ;;
 
       ($kvmSetupQemu | kvmSetupQemu)
@@ -107,13 +89,9 @@ function kvmConf
       ($kvmWxp | kvmWxp)
         step="$kvmWxp kvmWxp";
         note "Install desktop icon for Windows™ XP";
-#        DoOrDie FetchOurOwn /usr/share/applications/wpoX3.desktop.sh;
-#        cd keep/usr/share/applications > /dev/null;
-#               DoOrDie ./wpoX3.desktop.sh > wpoX3.desktop;
-#               DoOrDie sudo cp -p wpoX3.desktop /usr/share/applications;
-#        cd - > /dev/null;
-        sysconf iconsWindows;
-        quit 1;
+
+        note "... you should run sysconf iconsWindows instead";
+        quit;
         ;;
 
       ($major.99)
@@ -126,16 +104,9 @@ function kvmConf
                 CheckCurrent /etc/{group,passwd};
                 ;;
               (*kvmSetup)
-                CheckOriginal /etc/kvm/kvm-{ifup,ifdown};
-                CheckOurOwn /etc/kvm/kvm-{ifup,ifdown};
+                #CheckOriginal /etc/kvm/kvm-{ifup,ifdown};
+                #CheckOurOwn /etc/kvm/kvm-{ifup,ifdown};
                 CheckOurOwn --sudo /etc/sudoers.d/vmif;
-                ;;
-              (*kvmInstallVde)
-                CheckCurrent /etc/{group,passwd};
-                ;;
-              (*kvmConfigureVde)
-                CheckOriginal /etc/dnsmasq.conf;
-                CheckPatch /etc/dnsmasq.conf;
                 ;;
               (*kvmInstallQemu)
                 CheckCurrent /etc/{group,passwd};
