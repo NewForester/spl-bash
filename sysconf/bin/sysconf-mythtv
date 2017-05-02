@@ -22,15 +22,15 @@ function defineSteps
     mythtvMySqlServer=$major.$minor.S;
 
     minor=$((minor+1));
+    mythtvMySqlSetup=$major.$minor;
+
+    minor=$((minor+1));
     mythtvInstallClient=$major.$minor.C;
     mythtvInstallServer=$major.$minor.S;
 
     minor=$((minor+1));
     mythtvSetupClient=$major.$minor.C;
     mythtvSetupServer=$major.$minor.S;
-
-    minor=$((minor+1));
-    mythtvDatabaseLan=$major.$minor;
 
     minor=$((minor+1));
     mythtvDatabaseAccess=$major.$minor;
@@ -73,6 +73,31 @@ function mythtvConf
         installPackage mysql-common mysql-client mysql-server;
         ;;
 
+      ($mythtvMySqlSetup | mythtvMySqlSetup)
+        step="$mythtvMySqlSetup mythtvMySqlSetup";
+        note "Configure the mysql server for LAN access ...";
+
+        echo "... patch configuration file";
+        DoOrDie CopyToKeep /etc/mysql/my.cnf;
+        DoOrDie ApplyPatch /etc/mysql/my.cnf;
+
+        echo "... update /etc/hosts.allow";
+        DoOrDie CopyToKeep /etc/hosts.allow;
+        DoOrDie InsertIntoFile '/localhost/' /etc/hosts.allow hosts.allow-mysql;
+        DoOrDie Deploy /etc/hosts.allow;
+
+        echo "... refresh mysql";
+        DoOrDie sudo service mysql reload;
+
+        read -sp "SQL root password: " sqlpw;
+        echo "";
+        echo "... grant SQL root access to ${HOSTNAME}";
+        DoOrDieHere mysql -u root -p${sqlpw} -h localhost << EOF
+grant all privileges on *.* to root@${HOSTNAME}.custards.lan identified by '${sqlpw}' with grant option;
+flush privileges;
+EOF
+        ;;
+
       ($mythtvInstallClient | mythtvInstallClient)
         step="$mythtvInstallClient mythtvInstallClient";
         note "Install mythtv client ...";
@@ -111,37 +136,16 @@ function mythtvConf
         DoOrDie SaveCurrent /etc/group;
         ;;
 
-      ($mythtvDatabaseLan | mythtvDatabaseLan)
-        step="$mythtvDatabaseLan mythtvDatabaseLan";
-        note "Configure the mythtv database for LAN access ...";
-
-        echo "... patch config.xml and my.cnf";
-        DoOrDie CopyToKeep --sudo /etc/mythtv/config.xml;
-        DoOrDie ApplyPatch --sudo /etc/mythtv/config.xml;
-        DoOrDie CopyToKeep /etc/mysql/my.cnf;
-        DoOrDie ApplyPatch /etc/mysql/my.cnf;
-
-        echo "... update /etc/hosts.allow";
-        DoOrDie CopyToKeep /etc/hosts.allow;
-        DoOrDie InsertIntoFile '/localhost/' /etc/hosts.allow hosts.allow-mysql;
-        DoOrDie Deploy /etc/hosts.allow;
-
-        echo "... refresh mysql";
-        DoOrDie sudo service mysql reload;
-        ;;
-
       ($mythtvDatabaseAccess | mythtvDatabaseAccess)
         step="$mythtvDatabaseAccess mythtvDatabaseAccess";
         note "Grant LAN access to the mythtv database ...";
 
+        echo "... configure mythtv for access from the LAN";
+        DoOrDie CopyToKeep --sudo /etc/mythtv/config.xml;
+        DoOrDie ApplyPatch --sudo /etc/mythtv/config.xml;
+
         read -sp "SQL root password: " sqlpw;
         echo "";
-
-        echo "... grant SQL root access to ${HOSTNAME}";
-        DoOrDieHere mysql -u root -p${sqlpw} -h localhost << EOF
-grant all privileges on *.* to root@${HOSTNAME}.custards.lan identified by '${sqlpw}' with grant option;
-flush privileges;
-EOF
 
         local pw=$(sed -e "/Password/!d" -e "s/.*>\(.*\)<.*/\1/" keep/etc/mythtv/config.xml);
         echo "... grant mythtv database access to LAN users";
@@ -168,6 +172,12 @@ EOF
               (*mythtvMySqlClient | *mythtvMySqlServer)
                 CheckCurrent /etc/{group,passwd};
                 ;;
+              (*mythtvMySqlSetup)
+                CheckOriginal /etc/mysql/my.cnf;
+                CheckPatch /etc/mysql/my.cnf;
+                CheckOriginal /etc/hosts.allow;
+                CheckDotDir /etc/hosts.allow hosts.allow-mysql;
+                ;;
               (*mythtvInstallClient | *mythtvInstallServer)
                 CheckCurrent /etc/{group,passwd};
                 ;;
@@ -179,13 +189,9 @@ EOF
                 CheckOurOwn --sudo /etc/sudoers.d/service;
                 CheckCurrent /etc/{group,passwd};
                 ;;
-              (*mythtvDatabaseLan)
+              (*mythtvDatabaseAccess)
                 CheckOriginal --sudo /etc/mythtv/config.xml;
                 CheckPatch --sudo /etc/mythtv/config.xml;
-                CheckOriginal /etc/mysql/my.cnf;
-                CheckPatch /etc/mysql/my.cnf;
-                CheckOriginal /etc/hosts.allow;
-                CheckDotDir /etc/hosts.allow hosts.allow-mysql;
                 ;;
             esac
         done
