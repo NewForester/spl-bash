@@ -8,66 +8,95 @@
 ##  NB:     The caller must source functions etc à la sysconf script.
 ##
 
-# do it
+function defineSteps
+{
+    local major="$1"; shift;
+    local minor=0;
+
+    minor=$((minor+1));
+    mythtvInstallDvb=$major.$minor;
+    mythtvDvbDrivers=$major.$minor.D;
+
+    minor=$((minor+1));
+    mythtvMySqlClient=$major.$minor.C;
+    mythtvMySqlServer=$major.$minor.S;
+
+    minor=$((minor+1));
+    mythtvInstallClient=$major.$minor.C;
+    mythtvInstallServer=$major.$minor.S;
+
+    minor=$((minor+1));
+    mythtvSetupClient=$major.$minor.C;
+    mythtvSetupServer=$major.$minor.S;
+
+    minor=$((minor+1));
+    mythtvDatabaseLan=$major.$minor;
+
+    minor=$((minor+1));
+    mythtvDatabaseAccess=$major.$minor;
+}
 
 function mythtvConf
 {
+    local major="$1"; shift;
+    defineSteps $major;
+
     case "$1" in
-      (22 | mythtv)
-        listOptions 22 mythtv;
+      ($major | mythtv)
+        listOptions sysconf-mythtv "$1";
         quit;
         ;;
 
-      (22.1 | mythtvInstallDvb)
-        step="22.1 mythtvInstallDvb";
+      ($mythtvInstallDvb | mythtvInstallDvb)
+        step="$mythtvInstallDvb mythtvInstallDvb";
         note "Install dvb test software ...";
         installPackage dvbstream dvb-apps xine-ui;
         ;;
 
-      (22.1.D | mythtvDvbDrivers)
-        step="22.1.D mythtvDvbDrivers";
+      ($mythtvDvbDrivers | mythtvDvbDrivers)
+        step="$mythtvDvbDrivers mythtvDvbDrivers";
         if [[ "${HOSTNAME}" == "ebony" ]]; then
             note "Ensure drivers for the VideoMate card will load ...";
             DoOrDie InstallOurOwn /etc/modprobe.d/videomate.conf;
         fi
         ;;
 
-      (22.2.C | mythtvMySqlClient)
-        step="22.2.C mythtvMySqlClient";
+      ($mythtvMySqlClient | mythtvMySqlClient)
+        step="$mythtvMySqlClient mythtvMySqlClient";
         note "Install mysql database client ...";
         installPackage mysql-common mysql-client;
         ;;
 
-      (22.2.S | mythtvMySqlServer)
-        step="22.2.S mythtvMySqlServer";
+      ($mythtvMySqlServer | mythtvMySqlServer)
+        step="$mythtvMySqlServer mythtvMySqlServer";
         note "Install mysql database client and server ...";
         installPackage mysql-common mysql-client mysql-server;
         ;;
 
-      (22.3.C | mythtvInstallClient)
-        step="22.3.C mythtvInstallClient";
+      ($mythtvInstallClient | mythtvInstallClient)
+        step="$mythtvInstallClient mythtvInstallClient";
         note "Install mythtv client ...";
         installPackage mythtv-common mythtv-frontend;
         ;;
 
-      (22.3.S | mythtvInstallServer)
-        step="22.3.S mythtvInstallServer";
+      ($mythtvInstallServer | mythtvInstallServer)
+        step="$mythtvInstallServer mythtvInstallServer";
         note "Install mythtv client and server ...";
         installPackage gawk mjpegtools libjs-jquery;
         installPackage transcode xmltv-util;
         installPackage mythtv-common mythtv-frontend mythtv-database mythtv-backend mythtv;
         ;;
 
-      (22.4.C | mythtvSetupClient)
-        step="22.4.C mythtvSetupClient";
+      ($mythtvSetupClient | mythtvSetupClient)
+        step="$mythtvSetupClient mythtvSetupClient";
         note "Configure desktop and user ids to use the mythtv client ...";
 
         echo "... install our own desktop files";
         DoOrDie InstallOurOwn /usr/share/applications/mythtv.desktop;
         ;;
 
-      (22.4.S | mythtvSetupServer)
-        step="22.4.S mythtvSetupServer";
+      ($mythtvSetupServer | mythtvSetupServer)
+        step="$mythtvSetupServer mythtvSetupServer";
         note "Configure desktop and user ids to use the mythtv server ...";
 
         echo "... install our own desktop files";
@@ -82,8 +111,8 @@ function mythtvConf
         DoOrDie SaveCurrent /etc/group;
         ;;
 
-      (22.5 | mythtvDatabaseLan)
-        step="22.5 mythtvDatabaseLan";
+      ($mythtvDatabaseLan | mythtvDatabaseLan)
+        step="$mythtvDatabaseLan mythtvDatabaseLan";
         note "Configure the mythtv database for LAN access ...";
 
         echo "... patch config.xml and my.cnf";
@@ -101,8 +130,8 @@ function mythtvConf
         DoOrDie sudo service mysql reload;
         ;;
 
-      (22.6 | mythtvDatabaseAccess)
-        step="22.6 mythtvDatabaseAccess";
+      ($mythtvDatabaseAccess | mythtvDatabaseAccess)
+        step="$mythtvDatabaseAccess mythtvDatabaseAccess";
         note "Grant LAN access to the mythtv database ...";
 
         read -sp "SQL root password: " sqlpw;
@@ -124,14 +153,23 @@ EOF
         fini="next login as telly and use usrconf to test the dvb setup";
         ;;
 
-      (22.99)
-        step="22.99 sanityCheck";
+      ($major.99)
+        step="$major.99 sanityCheck";
         note "Checking mythtv ...";
-        listLoggedSteps ${1%.*} | while read step name status; do
+        listLoggedSteps $major | while read step name status; do
             printf "%-7s %-23s %s\n" $step $name $status;
             case "$installDist $name" in
+              (*mythtvInstallDvb)
+                CheckCurrent /etc/{group,passwd};
+                ;;
               (*mythtvDvbDrivers)
                 CheckOurOwn /etc/modprobe.d/videomate.conf;
+                ;;
+              (*mythtvMySqlClient | *mythtvMySqlServer)
+                CheckCurrent /etc/{group,passwd};
+                ;;
+              (*mythtvInstallClient | *mythtvInstallServer)
+                CheckCurrent /etc/{group,passwd};
                 ;;
               (*mythtvSetupClient)
                 CheckOurOwn /usr/share/applications/mythtv.desktop;
@@ -156,7 +194,7 @@ EOF
 
       (*)
         badOption "$1";
-        listOptions 22 mythtv;
+        listOptions sysconf-mythtv $major;
         quit 1;
         ;;
     esac
