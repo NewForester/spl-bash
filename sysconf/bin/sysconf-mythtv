@@ -38,6 +38,8 @@ function defineSteps
 
 function mythtvConf
 {
+    local sqlpw;
+
     local major="$1"; shift;
     defineSteps $major;
 
@@ -50,6 +52,7 @@ function mythtvConf
       ($mythtvInstallDvb | mythtvInstallDvb)
         step="$mythtvInstallDvb mythtvInstallDvb";
         note "Install dvb test software ...";
+
         installPackage dvbstream dvb-apps xine-ui;
         ;;
 
@@ -64,12 +67,20 @@ function mythtvConf
       ($mythtvMySqlClient | mythtvMySqlClient)
         step="$mythtvMySqlClient mythtvMySqlClient";
         note "Install mysql database client ...";
+
         installPackage mysql-common mysql-client;
         ;;
 
       ($mythtvMySqlServer | mythtvMySqlServer)
         step="$mythtvMySqlServer mythtvMySqlServer";
         note "Install mysql database client and server ...";
+
+        echo "You will be prompted for an SQL root password ...";
+        echo "... do not use - in the password";
+
+        read -sp "Press enter to continue " sqlpw;
+        echo "";
+
         installPackage mysql-common mysql-client mysql-server;
         ;;
 
@@ -77,17 +88,18 @@ function mythtvConf
         step="$mythtvMySqlSetup mythtvMySqlSetup";
         note "Configure the mysql server for LAN access ...";
 
-        echo "... patch configuration file";
-        DoOrDie CopyToKeep /etc/mysql/my.cnf;
-        DoOrDie ApplyPatch /etc/mysql/my.cnf;
-
         echo "... update /etc/hosts.allow";
         DoOrDie CopyToKeep /etc/hosts.allow;
         DoOrDie InsertIntoFile '/localhost/' /etc/hosts.allow hosts.allow-mysql;
         DoOrDie Deploy /etc/hosts.allow;
 
-        echo "... refresh mysql";
-        DoOrDie sudo service mysql reload;
+        echo "... patch configuration file";
+        DoOrDie CopyToKeep /etc/mysql/my.cnf;
+        DoOrDie ApplyPatch /etc/mysql/my.cnf;
+
+        echo "... refresh mysql service";
+        DoOrDie sudo service mysql stop;
+        DoOrDie sudo service mysql start;
 
         read -sp "SQL root password: " sqlpw;
         echo "";
@@ -101,12 +113,15 @@ EOF
       ($mythtvInstallClient | mythtvInstallClient)
         step="$mythtvInstallClient mythtvInstallClient";
         note "Install mythtv client ...";
+
+        installPackage gawk mjpegtools;
         installPackage mythtv-common mythtv-frontend;
         ;;
 
       ($mythtvInstallServer | mythtvInstallServer)
         step="$mythtvInstallServer mythtvInstallServer";
         note "Install mythtv client and server ...";
+
         installPackage gawk mjpegtools libjs-jquery;
         installPackage transcode xmltv-util;
         installPackage mythtv-common mythtv-frontend mythtv-database mythtv-backend mythtv;
@@ -147,13 +162,12 @@ EOF
         read -sp "SQL root password: " sqlpw;
         echo "";
 
-        local pw=$(sed -e "/Password/!d" -e "s/.*>\(.*\)<.*/\1/" keep/etc/mythtv/config.xml);
+        local pw=$(sudo sed -e '/Password/!d' -e 's/.*>\(.*\)<.*/\1/' keep/etc/mythtv/config.xml);
         echo "... grant mythtv database access to LAN users";
         DoOrDieHere mysql -u root -p${sqlpw} -h localhost << EOF
 grant all privileges on mythconverg.* to mythtv@'192.168.19.%' identified by '${pw}';
 flush privileges;
 EOF
-
         fini="next login as telly and use usrconf to test the dvb setup";
         ;;
 
