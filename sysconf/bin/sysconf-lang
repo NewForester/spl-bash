@@ -23,6 +23,10 @@ function defineSteps
     minor=$((minor+1));
     langPhp=$major.$minor;
     phpModule=$major.$minor.M;
+
+    minor=$((minor+1));
+    langPerl=$major.$minor;
+    perlModule=$major.$minor.M;
 }
 
 function phpPhar
@@ -161,6 +165,52 @@ function langConf
             phpPhar "${url}" "${module,,}";
             ;;
         esac
+        ;;
+
+      ($langPerl | langPerl)
+        step="$langPerl langPerl";
+        note "Install Perl 5 essentials";
+
+        installPackage perl perl-doc;
+
+        note "... default configuration of cpan";
+        DoOrDieHere sudo cpan << EOF
+y
+q
+EOF
+
+        note "... install cpanm";
+        DoOrDie sudo cpan App::cpanminus;
+
+        note "$(perl -v | sed -e '/version/!d' -e 's/.*(v\(.*\)).*/Perl \1/') installed";
+        note "... documentation installed";
+        note "... module installer (cpanm) installed";
+        note "... perldoc  - already installed";
+        note "... perllint - suggest sysconf perlModule Perl::Lint";
+        note "... perlunit - suggest sysconf perlModule Perl::Unit";
+        ;;
+
+      ($perlModule | perlModule)
+        local flags;
+
+        case "${module,,}" in
+          (perl::doc | perlint)
+            note "perldoc already installed - use perldoc from the command line";
+            quit;
+            ;;
+          (perl::lint | perlint)
+            flags="-f";                 # it fails its own regression tests
+            module="Perl::Lint";
+            ;;
+          (perl::unit | perlunit)
+            module="Test::Class";
+            ;;
+        esac
+
+        step="$perlModule perlModule:${module}";
+        note "Install Perl 5 module ${module}";
+
+        DoOrDie sudo cpanm ${flags} ${module};
         ;;
 
       ($major.99)
