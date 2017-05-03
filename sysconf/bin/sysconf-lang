@@ -15,6 +15,10 @@ function defineSteps
 
     minor=$((minor+1));
     buildEssential=$major.$minor;
+
+    minor=$((minor+1));
+    langPython3=$major.$minor;
+    pythonModule=$major.$minor.M;
 }
 
 function langConf
@@ -22,8 +26,10 @@ function langConf
     local major="$1"; shift;
     defineSteps $major;
 
+    local module="$2";
+
     case "$1" in
-      ($major | build)
+      ($major | build | lang)
         listOptions sysconf-lang "$1";
         quit;
         ;;
@@ -35,6 +41,38 @@ function langConf
         installPackage manpages-dev build-essential ccache;
         ;;
 
+      ($langPython3 | langPython3)
+        step="$langPython3 langPython3";
+        note "Install Python 3 essentials";
+
+        installPackage python3 python3-doc python3-pip;
+
+        note "$(python --version 2>&1) installed";
+        note "... documentation installed";
+        note "... module installer (pip) installed";
+        note "... pydoc  - already installed";
+        note "... pylint - suggest sysconf pythonModule pylint";
+        note "... pyunit - already installed";
+        ;;
+
+      ($pythonModule | pythonModule)
+        case "${module,,}" in
+          (pydoc)
+            note "pydoc already installed - use pydoc3 from the command line";
+            quit;
+            ;;
+          (pyunit)
+            note "pyunit already installed - use import unittest in test modules";
+            quit;
+            ;;
+        esac
+
+        step="$pythonModule pythonModule:${module}";
+        note "Install Python 3 module ${module}";
+
+        DoOrDie sudo pip3 install ${module};
+        ;;
+
       ($major.99)
         step="$major.99 sanityCheck";
         note "Checking apps ...";
@@ -43,6 +81,11 @@ function langConf
             case "$installDist $name" in
               (*buildEssential)
                 CheckCurrent /etc/{passwd,group};
+                ;;
+              (*lang*)
+                CheckCurrent /etc/{passwd,group};
+                ;;
+              (*Module:*)
                 ;;
             esac
         done

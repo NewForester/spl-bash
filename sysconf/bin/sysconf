@@ -147,7 +147,7 @@ case "$1" in
     mailConf 21 "$@";
     ;;
 
-  (20* | build*)
+  (20* | build* | lang* | *Module)
     source sysconf-lang;
     langConf 20 "$@";
     ;;
