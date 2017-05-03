@@ -19,6 +19,53 @@ function defineSteps
     minor=$((minor+1));
     langPython3=$major.$minor;
     pythonModule=$major.$minor.M;
+
+    minor=$((minor+1));
+    langPhp=$major.$minor;
+    phpModule=$major.$minor.M;
+}
+
+function phpPhar
+{
+    local url="$1";
+    local prog="$2";
+
+    local archive="${url##*/}";
+
+    cd /usr/local/bin > /dev/null;
+        DoOrDie sudo rm -f "${archive}";
+
+        DoOrDie sudo wget "${url}";
+
+        DoOrDie sudo chmod +x "${archive}";
+        DoOrDie sudo ln -sf "${archive}" "${prog}";
+    cd - > /dev/null;
+}
+
+function phpLint
+{
+    local url="$1";
+    local prog="$2";
+
+    local archive="${url##*/}";
+    local dir="${archive%%.tar.gz*}";
+
+    DoOrDie mkdir -p /opt/php/;
+
+    cd /opt/php/ > /dev/null;
+        DoOrDie rm -f "${archive}";
+        DoOrDie wget "${url}";
+
+        DoOrDie rm -fr "${dir}";
+        DoOrDie tar -xf "${archive}";
+        DoOrDie rm -f "${archive}";
+    cd - > /dev/null;
+
+    cd "/opt/php/${dir}"; > /dev/null;
+        DoOrDie sed -i php -e "'s/opt\/php/usr/'";
+    cd - > /dev/null;
+
+    DoOrDie sudo ln -sf "/opt/php/${dir}/phpl" "/usr/local/bin/${prog}";
 }
 
 function langConf
@@ -71,6 +118,49 @@ function langConf
         note "Install Python 3 module ${module}";
 
         DoOrDie sudo pip3 install ${module};
+        ;;
+
+      ($langPhp | langPhp)
+        step="$langPhp langPhp";
+        note "Install PHP 5 essentials";
+
+        installPackage php5 php-doc php-pear;
+
+        note "$(php --version | sed -e '1!d' -e 's/-.*//') installed";
+        note "... documentation installed";
+        note "... module installer (pear) installed";
+        note "... phpdoc  - suggest sysconf phpModule PHPDoc";
+        note "... phplint - suggest sysconf phpModule PHPLint";
+        note "... phpunit - suggest sysconf phpModule PHPUnit";
+        ;;
+
+      ($phpModule | phpModule)
+        case "${module,,}" in
+          (phpdoc | phpdocumentor)
+            module="phpDoc";
+            url=http://www.phpdoc.org/phpDocumentor.phar;
+            ;;
+          (phplint)
+            module="PHPLint";
+            url=http://www.icosaedro.it/phplint/phplint-3.0_20160307.tar.gz;
+            ;;
+          (phpunit)
+            module="PHPUnit";
+            url=https://phar.phpunit.de/phpunit-5.7.phar;
+            ;;
+        esac
+
+        step="$phpModule phpModule:${module}";
+        note "Install PHP 5 module ${module}";
+
+        case "${module}" in
+          (PHPLint)
+            phpLint "${url}" "${module,,}";
+            ;;
+          (*)
+            phpPhar "${url}" "${module,,}";
+            ;;
+        esac
         ;;
 
       ($major.99)
