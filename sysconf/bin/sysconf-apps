@@ -70,7 +70,7 @@ function appsConf
         step="$appsSpellTools appsSpellTools";
         note "Install spell, hyphenation and thesaurus";
 
-        installPackage myspell-en-gb hyphen-en-us mythes-en-us;
+        installPackage myspell-en-gb hunspell-en-us hyphen-en-us mythes-en-us;
         ;;
 
       ($appsJava | appsJava)
@@ -85,6 +85,7 @@ function appsConf
         note "Install LibreOffice";
 
         installPackage libreoffice;
+        installPackage libreoffice-help-en-gb libreoffice-l10n-en-gb;
         installPackage libreoffice-script-provider-python;
         installPackage libreoffice-officebean;
         if [[ -d "/etc/kde4" ]]; then
@@ -98,22 +99,13 @@ function appsConf
         note "Install Firefox and Thunderbird applications";
 
         case "${USER}" in
-          ("debian" | "pbr")
-            installPackage iceweasel iceweasel-l10n-en-gb;
+          ("devuan" | *)
+            installPackage firefox-esr firefox-esr-l10n-en-gb;
+            installPackage mozplugger;
             installPackage xul-ext-adblock-plus xul-ext-flashblock xul-ext-noscript xul-ext-tabmixplus;
-            installPackage icedove icedove-l10n-en-gb;
-            ;;
-          ("ubuntu" | "mint" | "hybryde")
-            installPackage firefox firefox-locale-en;
-            installPackage thunderbird thunderbird-locale-en;
-            ;;
-          (*)
-            installPackage firefox firefox-l10n-en-gb;
             installPackage thunderbird thunderbird-l10n-en-gb;
+            ;;
         esac
-
-        # squeeze yes, wheezy no - DoOrDieLocal doapt-get install mozilla-libreoffice;
-        # squeeze yes, wheezy no - DoOrDieLocal doapt-get install mozplugger;
         ;;
 
       ($appsPdfViewer | appsPdfViewer)
@@ -121,9 +113,9 @@ function appsConf
         note "Install PDF document viewer";
 
         if [[ -d "/etc/kde4" ]]; then
-            Install okular;
+            installPackage okular;
         else
-            Install evince-gtk;
+            installPackage evince-gtk;
         fi
         ;;
 
@@ -131,18 +123,14 @@ function appsConf
         step="$appsVlc appsVlc";
         note "Install VLC";
 
-        if [[ "${RELEASE}" == 13.10 || "${RELEASE}" == 16 ]]; then
-            installPackage vlc browser-plugin-vlc;
-        else
-            installPackage vlc mozilla-plugin-vlc;
-        fi
+        installPackage vlc browser-plugin-vlc;
         ;;
 
       ($appsVncViewers | appsVncViewers)
         step="$appsVncViewers appsVncViewers";
         note "Install VNC viewers";
 
-        installPackage tightvncserver xvfb x11vnc;
+        installPackage xtightvncviewer;
         ;;
 
       ($appsVncServers | appsVncServers)
@@ -156,17 +144,20 @@ function appsConf
         step="$appsPidgin appsPidgin";
         note "Install pidgin packages ...";
 
-        installPackage pidgin pidgin-sipe;
+        installPackage pidgin;
         ;;
 
       ($appsPidginLync | appsPidginLync)
         step="$appsPidgin appsPidginLync";
         note "Install pidgin plugin for interworking with Lync ...";
 
-        installPackage pidgin pidgin-sipe;
+        installPackage pidgin-sipe;
         ;;
 
       ($appsDavMail | appsDavMail)
+        #
+        # beware:  there is now a xul-ext-sogo-connector that may make some or all of this redundant
+        #
         step="$appsDavMail | appsDavMail";
         note "Install DavMail and friends ...";
 
@@ -206,7 +197,7 @@ function appsConf
         wgetAndCheck "http://www.sogo.nu/files/downloads/extensions/${xpi}" "Zip archive data, at least v2.0 to extract";
 
         DoOrDie cp -pf "${xpi}" "/home/mozilla/thunderbird/profile/extensions";
-        DoOrDie cp -pf "${xpi}" "/media/share/linux/usrconf/thunderbird/$HOSTNAME/extensions";
+        DoOrDie cp -pf "${xpi}" "${installShare}/usrconf/thunderbird/$HOSTNAME/extensions";
 
         DoOrDie rm -f "${xpi}";
         ;;
