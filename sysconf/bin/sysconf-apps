@@ -14,7 +14,7 @@ function defineSteps
     local minor=0;
 
     minor=$((minor+1));
-    appsDev=$major.$minor;
+    appsSpellTools=$major.$minor;
 
     minor=$((minor+1));
     appsJava=$major.$minor;
@@ -23,25 +23,24 @@ function defineSteps
     appsOffice=$major.$minor;
 
     minor=$((minor+1));
-    appsSpellTools=$major.$minor;
-
-    minor=$((minor+1));
     appsMozilla=$major.$minor;
 
     minor=$((minor+1));
-    appsFlash=$major.$minor;
+    appsPdfViewer=$major.$minor;
 
     minor=$((minor+1));
-    appsVLC=$major.$minor;
+    appsVlc=$major.$minor;
 
     minor=$((minor+1));
-    appsVNC=$major.$minor;
-
-    minor=$((minor+1));
-    appsDavMail=$major.$minor;
+    appsVncViewers=$major.$minor.V;
+    appsVncServers=$major.$minor.S;
 
     minor=$((minor+1));
     appsPidgin=$major.$minor;
+    appsPidginLync=$major.$minor.L;
+
+    minor=$((minor+1));
+    appsDavMail=$major.$minor;
 }
 
 function wgetAndCheck
@@ -67,21 +66,24 @@ function appsConf
         quit;
         ;;
 
-      ($appsDev | appsDev)
-        step="$appsDev appsDev";
-        note "Install C/C++ compiler and man pages 2 & 3";
-        installPackage manpages-dev build-essential ccache;
+      ($appsSpellTools | appsSpellTools)
+        step="$appsSpellTools appsSpellTools";
+        note "Install spell, hyphenation and thesaurus";
+
+        installPackage myspell-en-gb hyphen-en-us mythes-en-us;
         ;;
 
       ($appsJava | appsJava)
         step="$appsJava appsJava";
         note "Install Java JRE";
+
         installPackage default-jre icedtea-plugin;
         ;;
 
       ($appsOffice | appsOffice)
         step="$appsOffice appsOffice";
         note "Install LibreOffice";
+
         installPackage libreoffice;
         installPackage libreoffice-script-provider-python;
         installPackage libreoffice-officebean;
@@ -91,15 +93,10 @@ function appsConf
         fi
         ;;
 
-      ($appsSpellTools | appsSpellTools)
-        step="$appsSpellTools appsSpellTools";
-        note "Install spell, hyphenation and thesaurus";
-        installPackage myspell-en-gb hyphen-en-us mythes-en-us;
-        ;;
-
       ($appsMozilla | appsMozilla)
         step="$appsMozilla appsMozilla";
-        note "Install Mozilla applications";
+        note "Install Firefox and Thunderbird applications";
+
         case "${USER}" in
           ("debian" | "pbr")
             installPackage iceweasel iceweasel-l10n-en-gb;
@@ -119,19 +116,21 @@ function appsConf
         # squeeze yes, wheezy no - DoOrDieLocal doapt-get install mozplugger;
         ;;
 
-      ($appsFlash | appsFlash)
-        step="$appsFlash appsFlash";
-        note "Install OpenSource flash";
-        installPackage gnash mozilla-plugin-gnash;
+      ($appsPdfViewer | appsPdfViewer)
+        step="$appsPdfViewer appsPdfViewer";
+        note "Install PDF document viewer";
+
         if [[ -d "/etc/kde4" ]]; then
-            installPackage klash konqueror-plugin-gnash;
+            Install okular;
+        else
+            Install evince-gtk;
         fi
-        installPackage pulseaudio lightspark browser-plugin-lightspark;
         ;;
 
-      ($appsVLC | appsVLC)
-        step="$appsVLC appsVLC";
+      ($appsVlc | appsVlc)
+        step="$appsVlc appsVlc";
         note "Install VLC";
+
         if [[ "${RELEASE}" == 13.10 || "${RELEASE}" == 16 ]]; then
             installPackage vlc browser-plugin-vlc;
         else
@@ -139,10 +138,32 @@ function appsConf
         fi
         ;;
 
-      ($appsVNC | appsVNC)
-        step="$appsVNC appsVNC";
-        note "Install VNC servers";
+      ($appsVncViewers | appsVncViewers)
+        step="$appsVncViewers appsVncViewers";
+        note "Install VNC viewers";
+
         installPackage tightvncserver xvfb x11vnc;
+        ;;
+
+      ($appsVncServers | appsVncServers)
+        step="$appsVncServers appsVncServers";
+        note "Install VNC servers";
+
+        installPackage tightvncserver xvfb x11vnc;
+        ;;
+
+      ($appsPidgin | appsPidgin)
+        step="$appsPidgin appsPidgin";
+        note "Install pidgin packages ...";
+
+        installPackage pidgin pidgin-sipe;
+        ;;
+
+      ($appsPidginLync | appsPidginLync)
+        step="$appsPidgin appsPidginLync";
+        note "Install pidgin plugin for interworking with Lync ...";
+
+        installPackage pidgin pidgin-sipe;
         ;;
 
       ($appsDavMail | appsDavMail)
@@ -188,13 +209,6 @@ function appsConf
         DoOrDie cp -pf "${xpi}" "/media/share/linux/usrconf/thunderbird/$HOSTNAME/extensions";
 
         DoOrDie rm -f "${xpi}";
-        ;;
-
-      ($appsPidgin | appsPidgin)
-        step="$appsPidgin appsPidgin";
-        note "Install pidgin packages ...";
-
-        installPackage pidgin pidgin-sipe;
         ;;
 
       ($major.99)
