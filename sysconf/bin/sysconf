@@ -92,6 +92,11 @@ case "$1" in
     quit 1;
     ;;
 
+  (30* | apps*)
+    source sysconf-apps;
+    appsConf 30 "$@";
+    ;;
+
   (31* | plugins*)
     source sysconf-plugins;
     pluginsConf "$@";

@@ -8,6 +8,42 @@
 ##  NB:     The caller must source functions etc à la sysconf script.
 ##
 
+function defineSteps
+{
+    local major="$1"; shift;
+    local minor=0;
+
+    minor=$((minor+1));
+    appsDev=$major.$minor;
+
+    minor=$((minor+1));
+    appsJava=$major.$minor;
+
+    minor=$((minor+1));
+    appsOffice=$major.$minor;
+
+    minor=$((minor+1));
+    appsSpellTools=$major.$minor;
+
+    minor=$((minor+1));
+    appsMozilla=$major.$minor;
+
+    minor=$((minor+1));
+    appsFlash=$major.$minor;
+
+    minor=$((minor+1));
+    appsVLC=$major.$minor;
+
+    minor=$((minor+1));
+    appsVNC=$major.$minor;
+
+    minor=$((minor+1));
+    appsDavMail=$major.$minor;
+
+    minor=$((minor+1));
+    appsPidgin=$major.$minor;
+}
+
 function wgetAndCheck
 {
     local url="$1";
@@ -20,30 +56,31 @@ function wgetAndCheck
     fi
 }
 
-# do it
-
 function appsConf
 {
+    local major="$1"; shift;
+    defineSteps $major;
+
     case "$1" in
-      (20 | apps)
-        listOptions 20 apps;
+      ($major | apps)
+        listOptions sysconf-apps "$1";
         quit;
         ;;
 
-      (20.1 | appsDev)
-        step="20.1 appsDev";
+      ($appsDev | appsDev)
+        step="$appsDev appsDev";
         note "Install C/C++ compiler and man pages 2 & 3";
         installPackage manpages-dev build-essential ccache;
         ;;
 
-      (20.2 | appsJava)
-        step="20.2 appsJava";
+      ($appsJava | appsJava)
+        step="$appsJava appsJava";
         note "Install Java JRE";
         installPackage default-jre icedtea-plugin;
         ;;
 
-      (20.3 | appsOffice)
-        step="20.3 appsOffice";
+      ($appsOffice | appsOffice)
+        step="$appsOffice appsOffice";
         note "Install LibreOffice";
         installPackage libreoffice;
         installPackage libreoffice-script-provider-python;
@@ -54,14 +91,14 @@ function appsConf
         fi
         ;;
 
-      (20.4 | appsSpellTools)
-        step="20.4 appsSpellTools";
+      ($appsSpellTools | appsSpellTools)
+        step="$appsSpellTools appsSpellTools";
         note "Install spell, hyphenation and thesaurus";
         installPackage myspell-en-gb hyphen-en-us mythes-en-us;
         ;;
 
-      (20.5 | appsMozilla)
-        step="20.5 appsMozilla";
+      ($appsMozilla | appsMozilla)
+        step="$appsMozilla appsMozilla";
         note "Install Mozilla applications";
         case "${USER}" in
           ("debian" | "pbr")
@@ -82,8 +119,8 @@ function appsConf
         # squeeze yes, wheezy no - DoOrDieLocal doapt-get install mozplugger;
         ;;
 
-      (20.6 | appsFlash)
-        step="20.6 appsFlash";
+      ($appsFlash | appsFlash)
+        step="$appsFlash appsFlash";
         note "Install OpenSource flash";
         installPackage gnash mozilla-plugin-gnash;
         if [[ -d "/etc/kde4" ]]; then
@@ -92,8 +129,8 @@ function appsConf
         installPackage pulseaudio lightspark browser-plugin-lightspark;
         ;;
 
-      (20.7 | appsVLC)
-        step="20.7 appsVLC";
+      ($appsVLC | appsVLC)
+        step="$appsVLC appsVLC";
         note "Install VLC";
         if [[ "${RELEASE}" == 13.10 || "${RELEASE}" == 16 ]]; then
             installPackage vlc browser-plugin-vlc;
@@ -102,14 +139,14 @@ function appsConf
         fi
         ;;
 
-      (20.8 | appsVNC)
-        step="20.8 appsVNC";
+      ($appsVNC | appsVNC)
+        step="$appsVNC appsVNC";
         note "Install VNC servers";
         installPackage tightvncserver xvfb x11vnc;
         ;;
 
-      (20.9 | appsDavMail)
-        step="20.9 | appsDavMail";
+      ($appsDavMail | appsDavMail)
+        step="$appsDavMail | appsDavMail";
         note "Install DavMail and friends ...";
 
         local tmpdir, root, version, deburl, deb, version, xpi;
@@ -153,17 +190,17 @@ function appsConf
         DoOrDie rm -f "${xpi}";
         ;;
 
-      (20.10 | appsPidgin)
-        step="20.10 appsPidgin";
+      ($appsPidgin | appsPidgin)
+        step="$appsPidgin appsPidgin";
         note "Install pidgin packages ...";
 
         installPackage pidgin pidgin-sipe;
         ;;
 
-      (20.99)
-        step="20.99 sanityCheck";
+      ($major.99)
+        step="$major.99 sanityCheck";
         note "Checking apps ...";
-        listLoggedSteps ${1%.*} | while read step name status; do
+        listLoggedSteps $major | while read step name status; do
             printf "%-7s %-23s %s\n" $step $name $status;
             case "$installDist $name" in
               (*app*)
@@ -176,7 +213,7 @@ function appsConf
 
       (*)
         badOption "$1";
-        listOptions 20 apps;
+        listOptions sysconf-apps $major;
         quit 1;
         ;;
     esac
