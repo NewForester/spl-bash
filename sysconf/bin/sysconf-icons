@@ -68,13 +68,9 @@ function iconsConf
         step="$iconsWindows iconsWindows";
         note "Install icons for Windows™ guest machines ...";
 
-        DoOrDie sudo rsync -ax /media/share/linux/sysconf/usr/share/icons/hicolor/ /usr/share/icons/hicolor/;
+        DoOrDie sudo rsync -ax ${installShare}/sysconf/usr/share/icons/hicolor/ /usr/share/icons/hicolor/;
 
-        DoOrDie FetchOurOwn /usr/share/applications/wpoX3.desktop.sh;
-        cd keep/usr/share/applications > /dev/null;
-            DoOrDie ./wpoX3.desktop.sh > wpoX3.desktop;
-            DoOrDie sudo cp -p wpoX3.desktop /usr/share/applications;
-        cd - > /dev/null;
+        DoOrDie InstallOurOwn /usr/share/applications/wpoX3.desktop;
         ;;
 
       ($major.99)
@@ -84,8 +80,7 @@ function iconsConf
             printf "%-7s %-23s %s\n" $step $name $status;
             case "$installDist $name" in
               (*iconsMythtv)
-                CheckOurOwn /usr/share/applications/mythtv.desktop;
-                CheckOurOwn --opt /usr/share/applications/mythtv-setup.desktop;
+                CheckOurOwn /usr/share/applications/{mythtv,mythtv-setup}.desktop;
                 ;;
               (*iconsEclipse)
                 CheckOurOwn /usr/share/applications/eclipse.desktop;
