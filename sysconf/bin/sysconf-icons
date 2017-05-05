@@ -8,18 +8,34 @@
 ##  NB:     The caller must source functions etc à la sysconf script.
 ##
 
-# do it
+function defineSteps
+{
+    local major="$1"; shift;
+    local minor=0;
+
+    minor=$((minor+1));
+    iconsMythtv=$major.$minor;
+
+    minor=$((minor+1));
+    iconsEclipse=$major.$minor;
+
+    minor=$((minor+1));
+    iconsWindows=$major.$minor;
+}
 
 function iconsConf
 {
+    local major="$1"; shift;
+    defineSteps $major;
+
     case "$1" in
-      (30 | icons)
-        listOptions 30 icons;
+      ($major | icons)
+        listOptions sysconf-icons "$1";
         quit;
         ;;
 
-      (30.1 | iconsMythtv)
-        step="30.1 iconsMythtv";
+      ($iconsMythtv | iconsMythtv)
+        step="$iconsMythtv iconsMythtv";
         note "Install icon desktop files for mythtv ...";
 
         if [[ -e /usr/share/applications/mythtv.desktop ]]; then
@@ -30,8 +46,8 @@ function iconsConf
         fi
         ;;
 
-      (30.2 | iconsEclipse)
-        step="30.2 iconsEclipse";
+      ($iconsEclipse | iconsEclipse)
+        step="$iconsEclipse iconsEclipse";
         note "Install icons for eclipse ...";
 
         local path file size dir;
@@ -48,8 +64,8 @@ function iconsConf
         DoOrDie InstallOurOwn /usr/share/applications/eclipse.desktop;
         ;;
 
-      (30.3 | iconsWindows)
-        step="30.3 iconsWindows";
+      ($iconsWindows | iconsWindows)
+        step="$iconsWindows iconsWindows";
         note "Install icons for Windows™ guest machines ...";
 
         DoOrDie sudo rsync -ax /media/share/linux/sysconf/usr/share/icons/hicolor/ /usr/share/icons/hicolor/;
@@ -61,10 +77,10 @@ function iconsConf
         cd - > /dev/null;
         ;;
 
-      (30.99)
-        step="30.99 sanityCheck";
+      ($major.99)
+        step="$major.99 sanityCheck";
         note "Checking icons ...";
-        listLoggedSteps ${1%.*} | while read step name status; do
+        listLoggedSteps $major | while read step name status; do
             printf "%-7s %-23s %s\n" $step $name $status;
             case "$installDist $name" in
               (*iconsMythtv)
@@ -84,7 +100,7 @@ function iconsConf
 
       (*)
         badOption "$1";
-        listOptions 30 icons;
+        listOptions sysconf-icons $major;
         quit 1;
         ;;
     esac
