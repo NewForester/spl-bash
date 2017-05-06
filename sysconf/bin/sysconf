@@ -92,6 +92,11 @@ case "$1" in
     quit 1;
     ;;
 
+  (32* | plugins*)
+    source sysconf-plugins;
+    pluginsConf 32 "$@";
+    ;;
+
   (31* | icons*)
     source sysconf-icons;
     iconsConf 31 "$@";
@@ -100,11 +105,6 @@ case "$1" in
   (30* | apps*)
     source sysconf-apps;
     appsConf 30 "$@";
-    ;;
-
-  (31* | plugins*)
-    source sysconf-plugins;
-    pluginsConf "$@";
     ;;
 
   (3[0-9]*)
