@@ -35,16 +35,15 @@ usage() { (sed -e "/^###/d" -e "/^##/!d" $0 && echo -e "\e[35m${0##*/}: \e[31m$@
 # the log file
 logFile="${HOME}/keep/${0##*/}";
 
-# configuration source directories ...
-installShare="/media/share/linux";
-installHome="${installShare}/${0##*/}";
+# environment configuration
 
-installBin="${installHome}/bin";
-if [[ -d "${installHome}/${USER}" ]]; then
-    installUser="${installHome}/${USER}";
-else
-    installUser="${installHome}/debian";
+if [[ ! -r /etc/usrconf-env ]]; then
+    error() { echo -e "\e[35m${0##*/}: \e[31m$@\e[0m"; }
+    error "/etc/usrconf-env missing";
+    exit 1;
 fi
+
+source /etc/usrconf-env;
 
 # ensure no confusion over which binaries we are using
 
@@ -54,16 +53,19 @@ PATH="${installBin}:/usr/bin:/bin";
 
 source usrconf-functions;
 
-# process the first flag (if any) and quit
+# process the first flag only (if any)
 
-while [[ -n "${1%%[!-]*}" ]]; do
+while [[ "${1:0:1}" == "-" ]]; do
     source usrconf-flags;
+    exit;
 done
 
-# do it
+# set trap so success and failure are both logged
 
 result="\e[31mFAILED\e[0m";
 trap 'printf "%-23s %-7s %-23s ${result}\n" "$(date +"%x %X")" ${step} >> ${logFile}' EXIT;
+
+# delegate to a section specific script
 
 case "$1" in
 
@@ -135,7 +137,6 @@ case "$1" in
     quit 1;
     ;;
 esac
-
 
 result="\e[32mOK\e[0m";
 echo "... ${fini-done}";
