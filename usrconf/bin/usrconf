@@ -1,0 +1,145 @@
+#!/bin/bash --posix
+
+##
+##  Goal:   semi-automate user configuration
+##
+##  Use:    usrconf --flag | step
+##
+##  where:  step is either a number or a mnemonic
+##
+##  Flags:  steps   list steps and mnemonics in numeric order
+##          log     list all the steps attempted so far
+##          current list the current step (last attempted)
+##          erase   erase the last (attempted) step from the log
+##          next    list the next steps to be done
+##          refresh reload the script from its reference
+##          help    list instruction for use
+##
+##  Files:  ~/keep/usrconf - the log of the usrconf steps attempted
+##
+##  System configuration is broken down into a number of steps.
+##  Each step is given a number:  the sequence of numbers is the suggested order in which the steps are done.
+##  Not all steps are relevant for every installation.
+##  Most steps are also given a mnemonic and that can be used instead of the number.
+##
+##  Note:   The first steps are bootstrap:  until they have been executed this script is not there to execute.
+##          It is expected they will be cut and pasted into a ssh login console.
+##
+
+cd;
+
+# print out header comment
+
+usage() { (sed -e "/^###/d" -e "/^##/!d" $0 && echo -e "\e[35m${0##*/}: \e[31m$@\e[0m") >&2; }
+
+# the log file
+logFile="${HOME}/keep/${0##*/}";
+
+# configuration source directories ...
+installShare="/media/share/linux";
+installHome="${installShare}/${0##*/}";
+
+installBin="${installHome}/bin";
+if [[ -d "${installHome}/${USER}" ]]; then
+    installUser="${installHome}/${USER}";
+else
+    installUser="${installHome}/debian";
+fi
+
+# ensure no confusion over which binaries we are using
+
+PATH="${installBin}:/usr/bin:/bin";
+
+# helper functions
+
+source usrconf-functions;
+
+# process the first flag (if any) and quit
+
+while [[ -n "${1%%[!-]*}" ]]; do
+    source usrconf-flags;
+done
+
+# do it
+
+result="\e[31mFAILED\e[0m";
+trap 'printf "%-23s %-7s %-23s ${result}\n" "$(date +"%x %X")" ${step} >> ${logFile}' EXIT;
+
+case "$1" in
+
+  (20* | pull* | push*)
+    source usrconf-apps;
+    appsConf "$@";
+    ;;
+
+  (12* | mythtv*)
+    source usrconf-mythtv;
+    mythtvConf "$@";
+    ;;
+
+  (11* | mozilla*)
+    source usrconf-mozilla;
+    mozillaConf "$@";
+    ;;
+
+  (10* | office*)
+    source usrconf-office;
+    officeConf "$@";
+    ;;
+
+  (1[0-9]*)
+    badOption $1;
+    quit 1;
+    ;;
+
+  (7* | kde)
+    source usrconf-kde;
+    kdeConf "$@";
+    ;;
+
+  (6* | xfce*)
+    source usrconf-xfce;
+    xfceConf "$@";
+    ;;
+
+  (4* | ssh*)
+    source usrconf-ssh;
+    sshConf "$@";
+    ;;
+
+  (3* | group*)
+    source usrconf-group;
+    groupConf "$@";
+    ;;
+
+  (2* | home*)
+    source usrconf-home;
+    homeConf "$@";
+    ;;
+
+  (bashProfile | installScripts)
+    ;&
+  (1* | bootstrap*)
+    source usrconf-bootstrap;
+    bootstrapConf "$@";
+    ;;
+
+  (99 | more.please)
+    step="more please";
+    error "No more steps until you provide them";
+    exit 1;
+    ;;
+
+  (*)
+    badOption $1;
+    quit 1;
+    ;;
+esac
+
+
+result="\e[32mOK\e[0m";
+echo "... ${fini-done}";
+
+### Local Variables: ***
+### mode:ksh ***
+### End: ***
