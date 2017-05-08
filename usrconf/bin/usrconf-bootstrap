@@ -41,10 +41,23 @@ function bootstrapConf
 
         note "Install shell scripts ...";
         (
-            umask 0002 && cd && mkdir -p bin keep tmp;
+            if [[ ! -r /etc/usrconf-env ]]; then
+                error() { echo -e "\e[35m${0##*/}: \e[31m$@\e[0m"; }
+                error "/etc/usrconf-env missing";
+                exit 1;
+            fi
 
-            cp -pf /media/share/linux/usrconf/bin/usrconf bin;
-            cp -pdfL /media/share/linux/bin/*[^~] bin;
+            echo "... source install environment";
+            source /etc/usrconf-env || exit 1;
+
+            echo "... create subdirectories under ${HOME}";
+            umask 0002 && cd && mkdir -p bin keep tmp || exit 1;
+
+            echo "... install usrconf in ${HOME}/bin";
+            cp -pf "${installShare}/usrconf/bin/usrconf" bin || exit 1;
+
+            echo "... install general purpose scripts in ${HOME}/bin";
+            cp -pdfL $(ls -d "${installShare}/bin/"*[^~] | fgrep -v 'bin.') bin || exit 1;
 
             printf "%-23s %-7s %-23s\n" "$(date +"%x %X")" 1.1 installScripts >> keep/usrconf;
             echo "... now run: bin/usrconf bashProfile";
