@@ -123,7 +123,7 @@ case "$1" in
     ;&
   (1* | bootstrap*)
     source usrconf-bootstrap;
-    bootstrapConf "$@";
+    bootstrapConf 1 "$@";
     ;;
 
   (99 | more.please)

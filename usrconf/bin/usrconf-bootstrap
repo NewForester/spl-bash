@@ -12,17 +12,30 @@
 ##  be executed in a semi-automatic fashion.
 ##
 
-# do it
+function defineSteps
+{
+    local major="$1"; shift;
+    local minor=0;
+
+    minor=$((minor+1));
+    installScripts=$major.$minor;
+
+    minor=$((minor+1));
+    bashProfile=$major.$minor;
+}
 
 function bootstrapConf
 {
+    local major="$1"; shift;
+    defineSteps $major;
+
     case "$1" in
-      (1 | bootstrap)
-        listOptions 1 bootstrap;
+      ($major | bootstrap)
+        listOptions usrconf-bootstrap "$1";
         quit;
         ;;
 
-      (1.1 | installScripts)
+      ($installScripts | installScripts)
         error "Do this step by-hand";
         quit 1;
 
@@ -38,8 +51,8 @@ function bootstrapConf
         )
         ;;
 
-      (1.2 | bashProfile)
-        step="1.2 bashProfile";
+      ($bashProfile | bashProfile)
+        step="$bashProfile bashProfile";
         note "Configure bash profiles ...";
 
         DoOrDie ln -s bin/bash* .;
@@ -50,9 +63,22 @@ function bootstrapConf
         fini="logout and back in again";
         ;;
 
+      ($major.99)
+        step="$major.99 sanityCheck";
+        note "Checking bootstrap ...";
+        listLoggedSteps $major | while read step name status; do
+            printf "%-7s %-23s %s\n" $step $name $status;
+            case "$installDist $name" in
+              (*)
+                ;;
+            esac
+        done
+        quit;
+        ;;
+
       (*)
         badOption "$1";
-        listOptions 1 bootstrap;
+        listOptions usrconf-bootstrap $major;
         quit 1;
         ;;
     esac
