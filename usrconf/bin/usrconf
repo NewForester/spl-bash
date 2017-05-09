@@ -116,7 +116,7 @@ case "$1" in
 
   (2* | home*)
     source usrconf-home;
-    homeConf "$@";
+    homeConf 2 "$@";
     ;;
 
   (bashProfile | installScripts)

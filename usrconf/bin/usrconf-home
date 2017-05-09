@@ -8,25 +8,44 @@
 ##  NB:     The caller must source functions etc à la usrconf script.
 ##
 
-# do it
+function defineSteps
+{
+    local major="$1"; shift;
+    local minor=0;
+
+    minor=$((minor+1));
+    homeDirectories=$major.$minor;
+
+    minor=$((minor+1));
+    homeLinks=$major.$minor;
+
+    minor=$((minor+1));
+    homeHplip=$major.$minor;
+
+    minor=$((minor+1));
+    homeHiddenFiles=$major.$minor;
+}
 
 function homeConf
 {
+    local major="$1"; shift;
+    defineSteps $major;
+
     case "$1" in
-      (2 | home)
-        listOptions 2 home;
+      ($major | home)
+        listOptions usrconf-home "$1";
         quit;
         ;;
 
-      (2.1 | homeDirectories)
-        step="2.1 homeDirectories";
+      ($homeDirectories | homeDirectories)
+        step="$homeDirectories homeDirectories";
         note "Create top level desktop directories ...";
 
         DoOrDie mkdir -p Desktop Documents Downloads;
         ;;
 
-      (2.2 | homeLinks)
-        step="2.2 homeLinks";
+      ($homeLinks | homeLinks)
+        step="$homeLinks homeLinks";
         note "Create links to shared volumes ...";
 
         DoOrDie mkdir -p Philately Pictures;
@@ -51,16 +70,16 @@ function homeConf
         [[ -d "${myDocuments}" ]] && DoOrDie ln -sf "${myDocuments}" Documents/Windows;
         ;;
 
-      (2.3 | homeHplip)
-        step="2.3 homeHplip";
+      ($homeHplip | homeHplip)
+        step="$homeHplip homeHplip";
         note "Hide hplip task tray icon ...";
 
         DoOrDie mkdir -m 700 -p .hplip;
         DoOrDie cp -pR "${installHome}/.hplip/"* .hplip;
         ;;
 
-      (2.4 | homeHiddenFiles)
-        step="2.4 homeHiddenFiles";
+      ($homeHiddenFiles | homeHiddenFiles)
+        step="$homeHiddenFiles homeHiddenFiles";
         note "Install user specific hidden files ...";
 
         if [[ -r "${installUser}/.face.icon" ]]; then
@@ -78,9 +97,22 @@ function homeConf
         fi
         ;;
 
+      ($major.99)
+        step="$major.99 sanityCheck";
+        note "Checking home ...";
+        listLoggedSteps $major | while read step name status; do
+            printf "%-7s %-23s %s\n" $step $name $status;
+            case "$installDist $name" in
+              (*)
+                ;;
+            esac
+        done
+        quit;
+        ;;
+
       (*)
         badOption "$1";
-        listOptions 2 home;
+        listOptions usrconf-home $major;
         quit 1;
         ;;
     esac
