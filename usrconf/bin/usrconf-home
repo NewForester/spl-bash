@@ -1,0 +1,91 @@
+#!/bin/bash --posix
+
+##
+##  Goal:   semi-automate user configuration of home directories
+##
+##  Use:    source usrconf-home
+##
+##  NB:     The caller must source functions etc à la usrconf script.
+##
+
+# do it
+
+function homeConf
+{
+    case "$1" in
+      (2 | home)
+        listOptions 2 home;
+        quit;
+        ;;
+
+      (2.1 | homeDirectories)
+        step="2.1 homeDirectories";
+        note "Create top level desktop directories ...";
+
+        DoOrDie mkdir -p Desktop Documents Downloads;
+        ;;
+
+      (2.2 | homeLinks)
+        step="2.2 homeLinks";
+        note "Create links to shared volumes ...";
+
+        DoOrDie mkdir -p Philately Pictures;
+
+        DoOrDie ln -sf /media/share/philately/ Philately/shared;
+
+        case "${USER}" in
+          (ber)
+            DoOrDie ln -sf /media/share/images/35mm/ Pictures/35mm;
+            DoOrDie ln -sf /media/share/images/glassSlides/ Pictures/glassSlides;
+            DoOrDie ln -sf /media/share/images/ulverston/ Pictures/ulverston;
+            ;;
+
+          (pbr)
+            DoOrDie ln -sf /media/share/images/Camera/ Pictures/Camera;
+            ;;
+        esac
+
+        local myDocuments="/media/win/w2kdata/Documents and Settings/${USER}/My Documents/";
+
+        [[ -e Documents/Windows ]] && DoOrDie rm Documents/Windows;
+        [[ -d "${myDocuments}" ]] && DoOrDie ln -sf "${myDocuments}" Documents/Windows;
+        ;;
+
+      (2.3 | homeHplip)
+        step="2.3 homeHplip";
+        note "Hide hplip task tray icon ...";
+
+        DoOrDie mkdir -m 700 -p .hplip;
+        DoOrDie cp -pR "${installHome}/.hplip/"* .hplip;
+        ;;
+
+      (2.4 | homeHiddenFiles)
+        step="2.4 homeHiddenFiles";
+        note "Install user specific hidden files ...";
+
+        if [[ -r "${installUser}/.face.icon" ]]; then
+            DoOrDie cp -pf "${installUser}/.face.icon" .;
+        fi
+
+        if [[ -r "${installUser}/.reportbugrc" ]]; then
+            DoOrDie cp -pf "${installUser}/.reportbugrc" .;
+        fi
+
+        if [[ -r "${installUser}/.home.excludes" ]]; then
+            DoOrDie cp -pf "${installUser}/.home.excludes" .;
+        else
+            DoOrDie touch .home.excludes;
+        fi
+        ;;
+
+      (*)
+        badOption "$1";
+        listOptions 2 home;
+        quit 1;
+        ;;
+    esac
+}
+
+### Local Variables: ***
+### mode:ksh ***
+### End: ***
