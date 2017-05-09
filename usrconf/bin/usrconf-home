@@ -54,9 +54,9 @@ function homeConf
 
         case "${USER}" in
           (ber)
-            DoOrDie ln -sf /media/share/images/35mm/ Pictures/35mm;
-            DoOrDie ln -sf /media/share/images/glassSlides/ Pictures/glassSlides;
-            DoOrDie ln -sf /media/share/images/ulverston/ Pictures/ulverston;
+            DoOrDie ln -sf /media/image/35mm/ Pictures/35mm;
+            DoOrDie ln -sf /media/image/glassSlides/ Pictures/glassSlides;
+            DoOrDie ln -sf /media/image/ulverston/ Pictures/ulverston;
             ;;
 
           (pbr)
@@ -82,19 +82,24 @@ function homeConf
         step="$homeHiddenFiles homeHiddenFiles";
         note "Install user specific hidden files ...";
 
-        if [[ -r "${installUser}/.face.icon" ]]; then
-            DoOrDie cp -pf "${installUser}/.face.icon" .;
-        fi
+        local file files="";
 
-        if [[ -r "${installUser}/.reportbugrc" ]]; then
-            DoOrDie cp -pf "${installUser}/.reportbugrc" .;
-        fi
+        files+=" .face.icon";
 
-        if [[ -r "${installUser}/.home.excludes" ]]; then
-            DoOrDie cp -pf "${installUser}/.home.excludes" .;
-        else
-            DoOrDie touch .home.excludes;
-        fi
+        files+=" .reportbugrc";
+
+        files+=" .home.excludes keep";
+        DoOrDie touch .home.excludes;
+
+        files+=" .gitconfig .gitignore .gitattributes";
+
+        for file in ${files}; do
+            if [[ -d "${installUser}/${file}" ]]; then
+                DoOrDie cp -pfr "${installUser}/${file}" .;
+            elif [[ -r "${installUser}/${file}" ]]; then
+                DoOrDie cp -pf "${installUser}/${file}" .;
+            fi
+        done
         ;;
 
       ($major.99)
