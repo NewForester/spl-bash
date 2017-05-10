@@ -111,7 +111,7 @@ case "$1" in
 
   (3* | group*)
     source usrconf-group;
-    groupConf "$@";
+    groupConf 3 "$@";
     ;;
 
   (2* | home*)

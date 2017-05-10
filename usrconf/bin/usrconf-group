@@ -8,28 +8,43 @@
 ##  NB:     The caller must source functions etc à la usrconf script.
 ##
 
-# do it
+function defineSteps
+{
+    local major="$1"; shift;
+    local minor=0;
+
+    minor=$((minor+1));
+    groupKvm=$major.$minor;
+
+    minor=$((minor+1));
+    groupMythtv=$major.$minor;
+
+    minor=$((minor+1));
+    groupDisk=$major.$minor;
+}
 
 function groupConf
 {
+    local major="$1"; shift;
+    defineSteps $major;
+
     case "$1" in
-      (3 | group)
-        listOptions 3 group;
+      ($major | group)
+        listOptions usrconf-group "$1";
         quit;
         ;;
 
-      (3.1 | groupKvm)
-        step="3.1 groupKvm";
+      ($groupKvm | groupKvm)
+        step="$groupKvm groupKvm";
         note "Add user to group kvm and install scripts ...";
 
         DoOrDieLocalLocal updatebin vm;
         addUserToGroups "${USER}" kvm;
-        # addUserToGroups "${USER}" vde2-net;
         DoOrDie SaveCurrent /etc/group;
         ;;
 
-      (3.2 | groupMythtv)
-        step="3.2 groupMythtv";
+      ($groupMythtv | groupMythtv)
+        step="$groupMythtv groupMythtv";
         note "Add user to group mythtv and install scripts ...";
 
         DoOrDieLocal updatebin tv;
@@ -37,8 +52,8 @@ function groupConf
         DoOrDie SaveCurrent /etc/group;
         ;;
 
-      (3.3 | groupDisk)
-        step="3.3 groupDisk";
+      ($groupDisk | groupDisk)
+        step="$groupDisk groupDisk";
         note "Add user to group disk and install scripts ...";
 
         DoOrDieLocal updatebin tv;
@@ -46,9 +61,23 @@ function groupConf
         DoOrDie SaveCurrent /etc/group;
         ;;
 
+      ($major.99)
+        step="$major.99 sanityCheck";
+        note "Checking group ...";
+        listLoggedSteps $major | while read step name status; do
+            printf "%-7s %-23s %s\n" $step $name $status;
+            case "$installDist $name" in
+              (*)
+                CheckCurrent /etc/{group,passwd};
+                ;;
+            esac
+        done
+        quit;
+        ;;
+
       (*)
         badOption "$1";
-        listOptions 3 group;
+        listOptions usrconf-group $major;
         quit 1;
         ;;
     esac
