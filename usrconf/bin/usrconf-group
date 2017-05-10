@@ -1,0 +1,59 @@
+#!/bin/bash --posix
+
+##
+##  Goal:   semi-automate user configuration of user ids and groups
+##
+##  Use:    source usrconf-group
+##
+##  NB:     The caller must source functions etc à la usrconf script.
+##
+
+# do it
+
+function groupConf
+{
+    case "$1" in
+      (3 | group)
+        listOptions 3 group;
+        quit;
+        ;;
+
+      (3.1 | groupKvm)
+        step="3.1 groupKvm";
+        note "Add user to group kvm and install scripts ...";
+
+        DoOrDieLocalLocal updatebin vm;
+        addUserToGroups "${USER}" kvm;
+        # addUserToGroups "${USER}" vde2-net;
+        DoOrDie SaveCurrent /etc/group;
+        ;;
+
+      (3.2 | groupMythtv)
+        step="3.2 groupMythtv";
+        note "Add user to group mythtv and install scripts ...";
+
+        DoOrDieLocal updatebin tv;
+        addUserToGroups "${USER}" mythtv;
+        DoOrDie SaveCurrent /etc/group;
+        ;;
+
+      (3.3 | groupDisk)
+        step="3.3 groupDisk";
+        note "Add user to group disk and install scripts ...";
+
+        DoOrDieLocal updatebin tv;
+        addUserToGroups "${USER}" disk;
+        DoOrDie SaveCurrent /etc/group;
+        ;;
+
+      (*)
+        badOption "$1";
+        listOptions 3 group;
+        quit 1;
+        ;;
+    esac
+}
+
+### Local Variables: ***
+### mode:ksh ***
+### End: ***
