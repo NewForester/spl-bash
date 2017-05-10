@@ -62,8 +62,12 @@ function hostsConf
             DoOrDie rm -fr keep/etc/hosts.allow.d;
         fi
 
-        DoOrDie CopyToKeep /etc/{hosts.allow,hosts.deny};
-        DoOrDie ApplyPatch /etc/{hosts.allow,hosts.deny};
+        DoOrDie CopyToKeep /etc/hosts.deny;
+        DoOrDie ApplyPatch /etc/hosts.deny;
+
+        DoOrDie CopyToKeep /etc/hosts.allow;
+        DoOrDie InsertIntoFile '/localhost/' /etc/hosts.allow hosts.allow-ssh;
+        DoOrDie Deploy /etc/hosts.allow;
         ;;
 
       ($major.99)
@@ -80,8 +84,10 @@ function hostsConf
                 CheckDotDir /etc/hosts hosts-local;
                 ;;
               (*hostsAccess)
-                CheckOriginal /etc/{hosts.allow,hosts.deny};
-                CheckPatch /etc/{hosts.allow,hosts.deny};
+                CheckOriginal /etc/hosts.deny;
+                CheckPatch /etc/hosts.deny;
+                CheckOriginal /etc/hosts.allow;
+                CheckDotDir /etc/hosts.allow hosts.allow-ssh;
                 ;;
             esac
         done
