@@ -42,9 +42,39 @@ function bewareGrub
     error "if you have two distinct boot partitions";
 }
 
+function srcFirmware
+{
+    action="$1"; shift;
+
+    for blob; do
+        case "${action}" in
+          (save)
+            DoOrDie cp -pR "${fwdst}/${blob}" "${fwsrc}";
+            ;;
+          (restore)
+            DoOrDie sudo cp -pR "${fwsrc}/${blob}" "${fwdst}";
+            ;;
+          (check)
+            if [[ ! -r "${fwdst}/${blob}" ]]; then
+                error "\"${blob}\" firmware has not been installed";
+            elif [[ ! -r "${fwsrc}/${blob}" ]]; then
+                error "\"${blob}\" firmware has not beed saved";
+            else
+                diff -q "${fwdst}/${blob}" "${fwsrc}/${blob}";
+            fi
+            ;;
+          (*)
+            error "\"${action}\" not recognised: use one of save, restore or check";
+            quit 1;
+            ;;
+        esac
+    done
+}
+
 function firmwareConf
 {
-    local fwbase=/media/share/linux/firmware;
+    local fwdst="/lib/firmware";
+    local fwsrc="${installShare}/firmware";
 
     local major="$1"; shift;
     defineSteps $major;
@@ -59,37 +89,47 @@ function firmwareConf
         step="$microcodeAmd microcodeAmd";
         note "Install microcode updates for AMD processors ...";
 
-        installPackage amd64-microcode;
-        bewareGrub;
+        if [[ -n "$2" ]]; then
+            step+=":$2";
+            srcFirmware "$2" amd-ucode;
+        else
+            installPackage amd64-microcode;
+            bewareGrub;
+        fi
         ;;
 
       ($microcodeIntel | microcodeIntel)
         step="$microcodeIntel microcodeIntel";
         note "Install microcode updates for Intel processors ...";
 
-        installPackage intel-microcode;
-        bewareGrub;
+        if [[ -n "$2" ]]; then
+            step+=":$2";
+            srcFirmware "$2" intel-ucode;
+        else
+            installPackage intel-microcode;
+            bewareGrub;
+        fi
         ;;
 
       ($firmwareRadeon | firmwareRadeon)
         step="$firmwareRadeon firmwareRadeon";
         note "Install firmware for the Radeon graphic chips ...";
 
-        DoOrDie sudo cp -pR "${fwbase}/radeon" "/lib/firmware/";
+        DoOrDie sudo cp -pR "${fwsrc}/radeon" "${fwdst}";
         ;;
 
       ($firmwareRealtek | firmwareRealtek)
         step="$firmwareRealtek firmwareRealtek";
         note "Install firmware for the Realtek network interface chips ...";
 
-        DoOrDie sudo cp -pR "${fwbase}/rtl_nic" "/lib/firmware/";
+        DoOrDie sudo cp -pR "${fwsrc}/rtl_nic" "${fwdst}";
         ;;
 
       ($firmwareLblink | firmwareLblink)
         step="$firmwareLblink firmwareLblink";
         note "Install firmware for the LB Link USB wifi stick ...";
 
-        DoOrDie sudo cp -pR "${fwbase}/rtlwifi" "/lib/firmware/";
+        DoOrDie sudo cp -pR "${fwsrc}/rtlwifi" "${fwdst}";
 
         echo "... add script to unload/reload the driver module when entering/leaving a suspend mode";
         DoOrDie InstallOurOwn /etc/pm/sleep.d/75-rtlwifi;
@@ -99,7 +139,7 @@ function firmwareConf
         step="$firmwareNetgear firmwareNetgear";
         note "Install firmware for the Netgear PCMCIA wifi card ...";
 
-        DoOrDie sudo cp -pR "${fwbase}/isl3886pci" "/lib/firmware/";
+        DoOrDie sudo cp -pR "${fwsrc}/isl3886pci" "${fwdst}";
 
         echo "... add script to unload/reload the driver module when entering/leaving a suspend mode";
         DoOrDie InstallOurOwn /etc/pm/sleep.d/75-prism;
@@ -109,22 +149,22 @@ function firmwareConf
         step="$firmwareBelkin firmwareBelkin";
         note "Install firmware for the Belkin USB wifi stick ...";
 
-        DoOrDie sudo cp -pR "${fwbase}/zd1211" "/lib/firmware/";
+        DoOrDie sudo cp -pR "${fwsrc}/zd1211" "${fwdst}";
         ;;
 
       ($firmwareSdhc | firmwareSdhc)
         step="$firmwareSdhc firmwareSdhc";
         note "Install firmware for SDHC flash card reader ...";
 
-        DoOrDie sudo cp -pR "${fwbase}/ene-ub6250" "/lib/firmware/";
+        DoOrDie sudo cp -pR "${fwsrc}/ene-ub6250" "${fwdst}";
         ;;
 
       ($firmwareDvb | firmwareDvb)
         step="$firmwareDvb firmwareDvb";
         note "Install firmware for the USB DVB sticks ...";
 
-        fwbase="/media/work/projects/mythtv/firmware"
-        DoOrDie sudo cp -p "${fwbase}/"{dvb-usb-dib0700-1.20.fw,dvb-usb-ec168.fw} "/lib/firmware";
+        fwsrc="/media/work/projects/mythtv/firmware"
+        DoOrDie sudo cp -p "${fwsrc}/"{dvb-usb-dib0700-1.20.fw,dvb-usb-ec168.fw} "${fwdst}";
         ;;
 
       ($major.99)
@@ -132,38 +172,47 @@ function firmwareConf
         note "Checking firmware ...";
         listLoggedSteps $major | while read step name status; do
             printf "%-7s %-23s %s\n" $step $name $status;
-            local needsTLC="New one this:  sysconf-firmware needs some maintenance ...";
             case "$installDist $name" in
               (*microcodeAmd*)
+                [[ -n "$microcodeAmd" ]] && srcFirmware check amd-ucode;
+                unset microcodeAmd;
                 CheckCurrent /etc/{passwd,group};
-                error "$needsTLC";
                 ;;
               (*microcodeIntel*)
+                [[ -n "$microcodeIntel" ]] && srcFirmware check intel-ucode;
+                unset microcodeIntel;
                 CheckCurrent /etc/{passwd,group};
-                error "$needsTLC";
                 ;;
               (*firmwareRadeon*)
-                error "$needsTLC";
+                [[ -n "$firmwareRadeon" ]] && srcFirmware check radeon;
+                unset firmwareRadeon;
                 ;;
               (*firmwareRealtek*)
-                error "$needsTLC";
+                [[ -n "$firmwareRealtek" ]] && srcFirmware check rtl_nic;
+                unset firmwareRealtek;
                 ;;
               (*firmwareLblink*)
+                [[ -n "$firmwareLblink" ]] && srcFirmware check rtlwifi;
+                unset firmwareLblink;
                 CheckOurOwn /etc/pm/sleep.d/75-rtlwifi;
-                error "$needsTLC";
                 ;;
               (*firmwareNetgear*)
+                [[ -n "$firmwareNetgear" ]] && srcFirmware check isl3886pci;
+                unset firmwareNetgear;
                 CheckOurOwn /etc/pm/sleep.d/75-prism;
-                error "$needsTLC";
                 ;;
               (*firmwareBelkin*)
-                error "$needsTLC";
+                [[ -n "$firmwareBelkin" ]] && srcFirmware check zd1211;
+                unset firmwareBelkin;
                 ;;
               (*firmwareSdhc*)
-                error "$needsTLC";
+                [[ -n "$firmwareSdhc" ]] && srcFirmware check ene-ub6250;
+                unset firmwareSdhc;
                 ;;
               (*firmwareDvb*)
-                  error "$needsTLC";
+                fwsrc="/media/work/projects/mythtv/firmware";
+                [[ -n "$firmwareDvb" ]] && srcFirmware check {dvb-usb-dib0700-1.20.fw,dvb-usb-ec168.fw};
+                unset firmwareDvb;
                 ;;
             esac
         done
