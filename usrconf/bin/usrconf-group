@@ -20,6 +20,9 @@ function defineSteps
     groupMythtv=$major.$minor;
 
     minor=$((minor+1));
+    groupWeb=$major.$minor;
+
+    minor=$((minor+1));
     groupDisk=$major.$minor;
 }
 
@@ -38,7 +41,7 @@ function groupConf
         step="$groupKvm groupKvm";
         note "Add user to group kvm and install scripts ...";
 
-        DoOrDieLocalLocal updatebin vm;
+        DoOrDieLocal updatebin vm;
         addUserToGroups "${USER}" kvm;
         DoOrDie SaveCurrent /etc/group;
         ;;
@@ -49,6 +52,15 @@ function groupConf
 
         DoOrDieLocal updatebin tv;
         addUserToGroups "${USER}" mythtv;
+        DoOrDie SaveCurrent /etc/group;
+        ;;
+
+      ($groupWeb | groupWeb)
+        step="$groupWeb groupWeb";
+        note "Add user to group web and install scripts ...";
+
+# none  DoOrDieLocal updatebin web;
+        addUserToGroups "${USER}" www-data;
         DoOrDie SaveCurrent /etc/group;
         ;;
 
