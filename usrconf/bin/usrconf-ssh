@@ -8,18 +8,31 @@
 ##  NB:     The caller must source functions etc à la usrconf script.
 ##
 
-# do it
+function defineSteps
+{
+    local major="$1"; shift;
+    local minor=0;
+
+    minor=$((minor+1));
+    sshSetup=$major.$minor;
+
+    minor=$((minor+1));
+    sshNewKey=$major.$minor;
+}
 
 function sshConf
 {
+    local major="$1"; shift;
+    defineSteps $major;
+
     case "$1" in
-      (4 | ssh)
-        listOptions 4 'ssh';
+      ($major | ssh)
+        listOptions usrconf-ssh "$1";
         quit;
         ;;
 
-      (4.1 | sshSetup)
-        step="4.1 sshSetup";
+      ($sshSetup | sshSetup)
+        step="$sshSetup sshSetup";
         note "Configure ssh (use exsiting key) ...";
 
         DoOrDie mkdir -m 700 -p .ssh;
@@ -36,8 +49,8 @@ function sshConf
         DoOrDie ln -sf "${HOSTNAME}_dsa" .ssh/id_dsa;
         ;;
 
-      (4.2 | sshNewKey)
-        step="4.2 sshNewKey";
+      ($sshNewKey | sshNewKey)
+        step="$sshNewKey sshNewKey";
         note "Configure ssh (create new key) ...";
 
         DoOrDie mkdir -p "${installUser}/.ssh";
@@ -51,9 +64,22 @@ function sshConf
         fini="now run usrconf sshSetup for the user on all machines";
         ;;
 
+      ($major.99)
+        step="$major.99 sanityCheck";
+        note "Checking ssh ...";
+        listLoggedSteps $major | while read step name status; do
+            printf "%-7s %-23s %s\n" $step $name $status;
+            case "$installDist $name" in
+              (*)
+                ;;
+            esac
+        done
+        quit;
+        ;;
+
       (*)
         badOption "$1";
-        listOptions 4 'ssh';
+        listOptions usrconf-ssh $major;
         quit 1;
         ;;
     esac

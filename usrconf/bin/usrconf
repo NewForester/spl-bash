@@ -106,7 +106,7 @@ case "$1" in
 
   (4* | ssh*)
     source usrconf-ssh;
-    sshConf "$@";
+    sshConf 4 "$@";
     ;;
 
   (3* | group*)
