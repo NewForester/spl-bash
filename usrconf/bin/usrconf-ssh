@@ -1,0 +1,64 @@
+#!/bin/bash --posix
+
+##
+##  Goal:   semi-automate user configuration of ssh
+##
+##  Use:    source usrconf-ssh
+##
+##  NB:     The caller must source functions etc à la usrconf script.
+##
+
+# do it
+
+function sshConf
+{
+    case "$1" in
+      (4 | ssh)
+        listOptions 4 'ssh';
+        quit;
+        ;;
+
+      (4.1 | sshSetup)
+        step="4.1 sshSetup";
+        note "Configure ssh (use exsiting key) ...";
+
+        DoOrDie mkdir -m 700 -p .ssh;
+        DoOrDie chmod g-w . .ssh;
+
+        DoOrDie rm -f .ssh/known_hosts;
+        DoOrDie cp -pf "${installUser}/.ssh/authorized_keys" .ssh;
+
+        if [[ ! -e "${installUser}/.ssh/${HOSTNAME}_dsa" ]]; then
+            return;
+        fi
+
+        DoOrDie cp -pf "${installUser}/.ssh/${HOSTNAME}"* .ssh;
+        DoOrDie ln -sf "${HOSTNAME}_dsa" .ssh/id_dsa;
+        ;;
+
+      (4.2 | sshNewKey)
+        step="4.2 sshNewKey";
+        note "Configure ssh (create new key) ...";
+
+        DoOrDie mkdir -p "${installUser}/.ssh";
+        cd "${installUser}/.ssh" > /dev/null;
+
+            DoOrDie ssh-keygen -t dsa -f "${HOSTNAME}_dsa" < /dev/null;
+            DoOrDie sed -e "'/${HOSTNAME}\$/d'" -e "'\$r ${HOSTNAME}_dsa.pub'" -i authorized_keys;
+
+        cd - > /dev/null;
+
+        fini="now run usrconf sshSetup for the user on all machines";
+        ;;
+
+      (*)
+        badOption "$1";
+        listOptions 4 'ssh';
+        quit 1;
+        ;;
+    esac
+}
+
+### Local Variables: ***
+### mode:ksh ***
+### End: ***
