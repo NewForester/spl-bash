@@ -14,10 +14,10 @@ function defineSteps
     local minor=0;
 
     minor=$((minor+1));
-    sshSetup=$major.$minor;
+    sshNewKey=$major.$minor;
 
     minor=$((minor+1));
-    sshNewKey=$major.$minor;
+    sshSetup=$major.$minor;
 }
 
 function sshConf
@@ -25,43 +25,67 @@ function sshConf
     local major="$1"; shift;
     defineSteps $major;
 
+    local key keylist="ecdsa dsa";
+
     case "$1" in
       ($major | ssh)
         listOptions usrconf-ssh "$1";
         quit;
         ;;
 
+      ($sshNewKey | sshNewKey)
+        step="$sshNewKey sshNewKey";
+        note "Generate new ssh key for ${USER} ...";
+
+        DoOrDie mkdir -p "${installUser}/.ssh";
+
+        cd "${installUser}/.ssh" > /dev/null;
+
+            if [[ ! -s authorized_keys ]]; then
+                echo "# authorised keys for user ${USER}" >> authorized_keys;
+            fi
+
+            if [[ ! -s authorized_keys ]]; then
+                error "failed to create authorized_keys file";
+            fi
+
+            for key in ${keylist}; do
+                DoOrDieHere ssh-keygen -t ecdsa -f "${HOSTNAME}_${key}" < /dev/null;
+
+                DoOrDie sed -i authorized_keys -e "'/${HOSTNAME}\$/d'";
+                DoOrDie sed -i authorized_keys -e "'\$r ${HOSTNAME}_${key}.pub'";
+
+                break;
+            done
+
+        cd - > /dev/null;
+
+        fini="now run usrconf sshSetup for ${USER} on all hosts";
+        ;;
+
       ($sshSetup | sshSetup)
         step="$sshSetup sshSetup";
-        note "Configure ssh (use exsiting key) ...";
+        note "Configure ssh using existing keys ...";
 
         DoOrDie mkdir -m 700 -p .ssh;
         DoOrDie chmod g-w . .ssh;
 
-        DoOrDie rm -f .ssh/known_hosts;
-        DoOrDie cp -pf "${installUser}/.ssh/authorized_keys" .ssh;
+        cd .ssh > /dev/null;
 
-        if [[ ! -e "${installUser}/.ssh/${HOSTNAME}_dsa" ]]; then
-            return;
-        fi
+            DoOrDie rm -f "${HOSTNAME}_"* "id_"*;
 
-        DoOrDie cp -pf "${installUser}/.ssh/${HOSTNAME}"* .ssh;
-        DoOrDie ln -sf "${HOSTNAME}_dsa" .ssh/id_dsa;
-        ;;
+            for key in ${keylist}; do
+                if [[ -e "${installUser}/.ssh/${HOSTNAME}_${key}" ]]; then
+                    DoOrDie cp -pf "${installUser}/.ssh/${HOSTNAME}_${key}"* .;
+                    DoOrDie ln -sf "${HOSTNAME}_${key}" "id_${key}";
+                    break;
+                fi
+            done
 
-      ($sshNewKey | sshNewKey)
-        step="$sshNewKey sshNewKey";
-        note "Configure ssh (create new key) ...";
-
-        DoOrDie mkdir -p "${installUser}/.ssh";
-        cd "${installUser}/.ssh" > /dev/null;
-
-            DoOrDie ssh-keygen -t dsa -f "${HOSTNAME}_dsa" < /dev/null;
-            DoOrDie sed -e "'/${HOSTNAME}\$/d'" -e "'\$r ${HOSTNAME}_dsa.pub'" -i authorized_keys;
+            DoOrDie cp -pf "${installUser}/.ssh/authorized_keys" .;
+            DoOrDie rm -f known_hosts;
 
         cd - > /dev/null;
-
-        fini="now run usrconf sshSetup for the user on all machines";
         ;;
 
       ($major.99)
