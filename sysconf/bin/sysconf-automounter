@@ -42,11 +42,20 @@ function automounterConf
         step="$automounterConfigure automounterConfigure";
         note "Configure the autmounter ...";
 
-        echo "... add our own maps and script";
-        DoOrDie sudo rm -f /etc/auto.master.d/*;
-        DoOrDie InstallOurOwn /etc/auto.master.d/{net.autofs,automount.logical.volumes,nfs-servers-by-subnet};
-
         DoOrDie sudo service autofs stop;
+
+        DoOrDie sudo rm -f /etc/auto.master.d/*;
+
+        echo "... ensure the generic maps and scripts are available";
+        DoOrDie sudo mkdir -p /net /smb /etc/creds;
+
+        DoOrDie CopyToKeep /etc/auto.smb;
+        DoOrDie ApplyPatch /etc/auto.smb;
+
+        DoOrDie InstallOurOwn /etc/auto.master.d/{net.autofs,smb.autofs};
+
+        echo "... add our own maps and scripts";
+        DoOrDie InstallOurOwn /etc/auto.master.d/{automount.logical.volumes,nfs-servers-by-subnet};
 
         local list="share ";
         if [[ -e "/dev/${HOSTNAME##*-}" ]]; then
@@ -63,10 +72,10 @@ function automounterConf
 
         fgrep -q "${installShare} " /etc/mtab && DoOrDie sudo umount "${installShare}";
 
-        DoOrDie sudo service autofs start;
-
         echo "... add script to flush automounts before entering suspend";
         DoOrDie InstallOurOwn /etc/pm/sleep.d/30-flush-mounts;
+
+        DoOrDie sudo service autofs start;
         ;;
 
       ($major.99)
@@ -79,7 +88,9 @@ function automounterConf
                 CheckCurrent /etc/{group,passwd};
                 ;;
               (*automounterConfigure)
-                CheckOurOwn /etc/auto.master.d/{net.autofs,automount.logical.volumes,nfs-servers-by-subnet};
+                CheckPatch /etc/auto.smb;
+                CheckOurOwn /etc/auto.master.d/{net.autofs,smb.autofs};
+                CheckOurOwn /etc/auto.master.d/{automount.logical.volumes,nfs-servers-by-subnet};
                 CheckOurOwn /etc/pm/sleep.d/30-flush-mounts;
                 (cd /etc/auto.master.d && DoOrDie ls -l auto.*);
                 ;;
