@@ -8,21 +8,45 @@
 ##  NB:     The caller must source functions etc à la usrconf script.
 ##
 
-# do it
+function defineSteps
+{
+    local major="$1"; shift;
+    local minor=0;
+
+    minor=$((minor+1));
+    xfceDesktop=$major.$minor;
+
+    minor=$((minor+1));
+    xfcePMdesktop=$major.$minor.D;
+    xfcePMlaptop=$major.$minor.L;
+
+    minor=$((minor+1));
+    xfceScreensaver=$major.$minor;
+
+    minor=$((minor+1));
+    xfceHostSpecifics=$major.$minor.H;
+    xfceUserSpecifics=$major.$minor.U;
+
+    minor=$((minor+1));
+    xfceVNC=$major.$minor;
+}
 
 function xfceConf
 {
+    local major="$1"; shift;
+    defineSteps $major;
+
     local desktop="${installHome}/xfce";
     local channel="xfce4/xfconf/xfce-perchannel-xml";
 
     case "$1" in
-      (6 | xfce)
-        listOptions 6 xfce;
+      ($major | xfce)
+        listOptions usrconf-xfce "$1";
         quit;
         ;;
 
-      (6.1 | xfceDesktop)
-        step="6.1 xfceDesktop";
+      ($xfceDesktop | xfceDesktop)
+        step="$xfceDesktop xfceDesktop";
         note "Configure the XFCE desktop - base configuration ...";
 
         rm -fr .config/xfce4/panel;
@@ -38,24 +62,24 @@ function xfceConf
         done
         ;;
 
-      (6.2.D | xfcePMdesktop)
-        step="6.2.D xfcePMdesktop";
+      ($xfcePMdesktop | xfcePMdesktop)
+        step="$xfcePMdesktop xfcePMdesktop";
         note "Configure XFCE power management for a desktop ...";
 
         mkdir -p .config/${channel};
         DoOrDie cp -pf "${desktop}/desktop/${channel}/xfce4-power-manager.xml" ".config/${channel}/xfce4-power-manager.xml";
         ;;
 
-      (6.2.L | xfcePMlaptop)
-        step="6.2.L xfcePMlaptop";
+      ($xfcePMlaptop | xfcePMlaptop)
+        step="$xfcePMlaptop xfcePMlaptop";
         note "Configure XFCE power management for a laptop ...";
 
         mkdir -p .config/${channel};
         DoOrDie cp -pf "${desktop}/laptop/${channel}/xfce4-power-manager.xml" ".config/${channel}/xfce4-power-manager.xml";
         ;;
 
-      (6.3 | xfceScreensaver)
-        step="6.3 xfceScreensaver";
+      ($xfceScreensaver | xfceScreensaver)
+        step="$xfceScreensaver xfceScreensaver";
         note "Configure the X screensaver for XFCE ...";
 
         if [[ -r "${desktop}/${USER}/.xscreensaver" ]]; then
@@ -69,8 +93,8 @@ function xfceConf
         fi
         ;;
 
-      (6.4.H | xfceHostSpecifics)
-        step="6.4.H xfceHostSpecifics";
+      ($xfceHostSpecifics | xfceHostSpecifics)
+        step="$xfceHostSpecifics xfceHostSpecifics";
         note "Configure the XFCE desktop - host specifics ...";
 
         if [[ -d "${desktop}/${HOSTNAME}" ]]; then
@@ -89,8 +113,8 @@ function xfceConf
         fi
         ;;
 
-      (6.4.U | xfceUserSpecifics)
-        step="6.4.U xfceUserSpecifics";
+      ($xfceUserSpecifics | xfceUserSpecifics)
+        step="$xfceUserSpecifics xfceUserSpecifics";
         note "Configure the XFCE desktop - user specifics ...";
 
         if [[ -d "${desktop}/${USER}" ]]; then
@@ -103,8 +127,8 @@ function xfceConf
         DoOrDie sed -e "'/base-directory/s~/home/[a-z]*~/home/${USER}~'" -i ".config/${channel}/xfce4-panel.xml";
         ;;
 
-      (6.5 | xfceVNC)
-        step="6.5 xfceVNC";
+      ($xfceVNC | xfceVNC)
+        step="$xfceVNC xfceVNC";
         note "Configure VNC for XFCE ...";
 
         echo "... set password";
@@ -114,9 +138,22 @@ function xfceConf
         DoOrDie ln -sf .vnc/xstartup .xinitrc;
         ;;
 
+      ($major.99)
+        step="$major.99 sanityCheck";
+        note "Checking xfce ...";
+        listLoggedSteps $major | while read step name status; do
+            printf "%-7s %-23s %s\n" $step $name $status;
+            case "$installDist $name" in
+              (*)
+                ;;
+            esac
+        done
+        quit;
+        ;;
+
       (*)
         badOption "$1";
-        listOptions 6 xfce;
+        listOptions usrconf-xfce $major;
         quit 1;
         ;;
     esac

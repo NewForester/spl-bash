@@ -101,7 +101,7 @@ case "$1" in
 
   (6* | xfce*)
     source usrconf-xfce;
-    xfceConf "$@";
+    xfceConf 6 "$@";
     ;;
 
   (4* | ssh*)
