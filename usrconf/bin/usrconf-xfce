@@ -14,21 +14,39 @@ function defineSteps
     local minor=0;
 
     minor=$((minor+1));
-    xfceDesktop=$major.$minor;
+    xfceConfiguration=$major.$minor;
 
     minor=$((minor+1));
-    xfcePMdesktop=$major.$minor.D;
-    xfcePMlaptop=$major.$minor.L;
+    xfceDesktop=$major.$minor.D;
+    xfceLaptop=$major.$minor.L;
 
     minor=$((minor+1));
     xfceScreensaver=$major.$minor;
 
     minor=$((minor+1));
+    xfceDistroSpecifics=$major.$minor.D;
+    xfceReleaseSpecifics=$major.$minor.R;
     xfceHostSpecifics=$major.$minor.H;
     xfceUserSpecifics=$major.$minor.U;
 
     minor=$((minor+1));
     xfceVNC=$major.$minor;
+}
+
+function xfceSpecifics
+{
+    local src="$1";
+    local copied=0;
+    local path;
+
+    if [[ -d "${src}" ]]; then
+        for path in $(find "${src}" -type f); do
+            DoOrDie cp -pR "${path}" ".config/${path/${src}\//}";
+            copied=1;
+        done
+    fi
+
+    return ${copied};
 }
 
 function xfceConf
@@ -45,51 +63,75 @@ function xfceConf
         quit;
         ;;
 
-      ($xfceDesktop | xfceDesktop)
-        step="$xfceDesktop xfceDesktop";
-        note "Configure the XFCE desktop - base configuration ...";
+      ($xfceConfiguration | xfceConfiguration)
+        step="$xfceConfiguration xfceConfiguration";
+        note "Common configuration for the XFCE desktop ...";
 
         rm -fr .config/xfce4/panel;
 
         local dir;
         for dir in .config; do
-            local path;
             mkdir -m 700 -p "${dir}";
 
+            local path;
             for path in $(ls -d "${desktop}/${dir}"/*); do
                 DoOrDie cp -pR "${path}" "${dir}";
             done
         done
         ;;
 
-      ($xfcePMdesktop | xfcePMdesktop)
-        step="$xfcePMdesktop xfcePMdesktop";
-        note "Configure XFCE power management for a desktop ...";
+      ($xfceDesktop | xfceDesktop)
+        step="$xfceDesktop xfceDesktop";
+        note "Configure XFCE (power management) for a desktop ...";
 
-        mkdir -p .config/${channel};
-        DoOrDie cp -pf "${desktop}/desktop/${channel}/xfce4-power-manager.xml" ".config/${channel}/xfce4-power-manager.xml";
+
+        if xfceSpecifics "${desktop}/desktop"; then
+            echo "... nothing to do";
+            quit;
+        fi
         ;;
 
-      ($xfcePMlaptop | xfcePMlaptop)
-        step="$xfcePMlaptop xfcePMlaptop";
-        note "Configure XFCE power management for a laptop ...";
+      ($xfceLaptop | xfceLaptop)
+        step="$xfceLaptop xfceLaptop";
+        note "Configure XFCE (power management) for a laptop ...";
 
-        mkdir -p .config/${channel};
-        DoOrDie cp -pf "${desktop}/laptop/${channel}/xfce4-power-manager.xml" ".config/${channel}/xfce4-power-manager.xml";
+
+        if xfceSpecifics "${desktop}/laptop"; then
+            echo "... nothing to do";
+            quit;
+        fi
         ;;
 
       ($xfceScreensaver | xfceScreensaver)
         step="$xfceScreensaver xfceScreensaver";
         note "Configure the X screensaver for XFCE ...";
 
-        if [[ -r "${desktop}/${USER}/.xscreensaver" ]]; then
-            DoOrDie cp -pf "${desktop}/${USER}/.xscreensaver" .;
-        elif [[ -r "${desktop}/${HOSTNAME}/.xscreensaver" ]]; then
-            DoOrDie cp -pf "${desktop}/${HOSTNAME}/.xscreensaver" .;
-        elif [[ -r "${desktop}/.xscreensaver" ]]; then
-            DoOrDie cp -pf "${desktop}/.xscreensaver" .;
-        elif [[ -r "${desktop}/../.xscreensaver" ]]; then
-            DoOrDie cp -pf "${desktop}/../.xscreensaver" .;
+        for dir in "${USER}" "${HOSTNAME}" "" ".."; do
+            local saver="${desktop}/${dir}/.xscreensaver";
+            if [[ -r "${saver}" ]]; then
+                DoOrDie cp -pf "${saver}" .;
+                break;
+            fi
+        done
+        ;;
+
+      ($xfceDistroSpecifics | xfceDistroSpecifics)
+        step="$xfceDistroSpecifics xfceDistroSpecifics";
+        note "Configure the XFCE desktop - distribution specifics ...";
+
+        if xfceSpecifics "${desktop}/${installDist}"; then
+            echo "... nothing to do";
+            quit;
+        fi
+        ;;
+
+      ($xfceReleaseSpecifics | xfceReleaseSpecifics)
+        step="$xfceReleaseSpecifics xfceReleaseSpecifics";
+        note "Configure the XFCE desktop - release specifics ...";
+
+        if xfceSpecifics "${desktop}/${installRelease}"; then
+            echo "... nothing to do";
+            quit;
         fi
         ;;
 
@@ -97,19 +139,9 @@ function xfceConf
         step="$xfceHostSpecifics xfceHostSpecifics";
         note "Configure the XFCE desktop - host specifics ...";
 
-        if [[ -d "${desktop}/${HOSTNAME}" ]]; then
-            local path;
-            for path in $(ls -d "${desktop}/${HOSTNAME}"/*); do
-                DoOrDie cp -pR "${path}" .config;
-            done
-        fi
-
-        if which mousepad > /dev/null; then
-           if [[ -d ".config/leafpad" ]]; then
-               rm -fr .config/mousepad;
-               DoOrDie mv .config/{leaf,mouse}pad;
-               DoOrDie mv .config/mousepad/{leaf,mouse}padrc;
-           fi
+        if xfceSpecifics "${desktop}/${HOSTNAME}"; then
+            echo "... nothing to do";
+            quit;
         fi
         ;;
 
@@ -117,12 +149,7 @@ function xfceConf
         step="$xfceUserSpecifics xfceUserSpecifics";
         note "Configure the XFCE desktop - user specifics ...";
 
-        if [[ -d "${desktop}/${USER}" ]]; then
-            local path;
-            for path in $(ls -d "${desktop}/${USER}"/*); do
-                DoOrDie cp -pR "${path}" .config;
-            done
-        fi
+        xfceSpecifics "${desktop}/${USER}";
 
         DoOrDie sed -e "'/base-directory/s~/home/[a-z]*~/home/${USER}~'" -i ".config/${channel}/xfce4-panel.xml";
         ;;
@@ -131,11 +158,11 @@ function xfceConf
         step="$xfceVNC xfceVNC";
         note "Configure VNC for XFCE ...";
 
-        echo "... set password";
-        DoOrDie cp -pR "${installUser}/.vnc" .;
         echo "... set xstartup script";
         DoOrDie cp -pf "${desktop}/.vnc/xstartup" .vnc/;
         DoOrDie ln -sf .vnc/xstartup .xinitrc;
+        echo "... set password";
+        DoOrDie cp -pR "${installUser}/.vnc" .;
         ;;
 
       ($major.99)
