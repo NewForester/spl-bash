@@ -1,0 +1,127 @@
+#!/bin/bash --posix
+
+##
+##  Goal:   semi-automate user configuration of the xfce desktop
+##
+##  Use:    source usrconf-xfce
+##
+##  NB:     The caller must source functions etc à la usrconf script.
+##
+
+# do it
+
+function xfceConf
+{
+    local desktop="${installHome}/xfce";
+    local channel="xfce4/xfconf/xfce-perchannel-xml";
+
+    case "$1" in
+      (6 | xfce)
+        listOptions 6 xfce;
+        quit;
+        ;;
+
+      (6.1 | xfceDesktop)
+        step="6.1 xfceDesktop";
+        note "Configure the XFCE desktop - base configuration ...";
+
+        rm -fr .config/xfce4/panel;
+
+        local dir;
+        for dir in .config; do
+            local path;
+            mkdir -m 700 -p "${dir}";
+
+            for path in $(ls -d "${desktop}/${dir}"/*); do
+                DoOrDie cp -pR "${path}" "${dir}";
+            done
+        done
+        ;;
+
+      (6.2.D | xfcePMdesktop)
+        step="6.2.D xfcePMdesktop";
+        note "Configure XFCE power management for a desktop ...";
+
+        mkdir -p .config/${channel};
+        DoOrDie cp -pf "${desktop}/desktop/${channel}/xfce4-power-manager.xml" ".config/${channel}/xfce4-power-manager.xml";
+        ;;
+
+      (6.2.L | xfcePMlaptop)
+        step="6.2.L xfcePMlaptop";
+        note "Configure XFCE power management for a laptop ...";
+
+        mkdir -p .config/${channel};
+        DoOrDie cp -pf "${desktop}/laptop/${channel}/xfce4-power-manager.xml" ".config/${channel}/xfce4-power-manager.xml";
+        ;;
+
+      (6.3 | xfceScreensaver)
+        step="6.3 xfceScreensaver";
+        note "Configure the X screensaver for XFCE ...";
+
+        if [[ -r "${desktop}/${USER}/.xscreensaver" ]]; then
+            DoOrDie cp -pf "${desktop}/${USER}/.xscreensaver" .;
+        elif [[ -r "${desktop}/${HOSTNAME}/.xscreensaver" ]]; then
+            DoOrDie cp -pf "${desktop}/${HOSTNAME}/.xscreensaver" .;
+        elif [[ -r "${desktop}/.xscreensaver" ]]; then
+            DoOrDie cp -pf "${desktop}/.xscreensaver" .;
+        elif [[ -r "${desktop}/../.xscreensaver" ]]; then
+            DoOrDie cp -pf "${desktop}/../.xscreensaver" .;
+        fi
+        ;;
+
+      (6.4.H | xfceHostSpecifics)
+        step="6.4.H xfceHostSpecifics";
+        note "Configure the XFCE desktop - host specifics ...";
+
+        if [[ -d "${desktop}/${HOSTNAME}" ]]; then
+            local path;
+            for path in $(ls -d "${desktop}/${HOSTNAME}"/*); do
+                DoOrDie cp -pR "${path}" .config;
+            done
+        fi
+
+        if which mousepad > /dev/null; then
+           if [[ -d ".config/leafpad" ]]; then
+               rm -fr .config/mousepad;
+               DoOrDie mv .config/{leaf,mouse}pad;
+               DoOrDie mv .config/mousepad/{leaf,mouse}padrc;
+           fi
+        fi
+        ;;
+
+      (6.4.U | xfceUserSpecifics)
+        step="6.4.U xfceUserSpecifics";
+        note "Configure the XFCE desktop - user specifics ...";
+
+        if [[ -d "${desktop}/${USER}" ]]; then
+            local path;
+            for path in $(ls -d "${desktop}/${USER}"/*); do
+                DoOrDie cp -pR "${path}" .config;
+            done
+        fi
+
+        DoOrDie sed -e "'/base-directory/s~/home/[a-z]*~/home/${USER}~'" -i ".config/${channel}/xfce4-panel.xml";
+        ;;
+
+      (6.5 | xfceVNC)
+        step="6.5 xfceVNC";
+        note "Configure VNC for XFCE ...";
+
+        echo "... set password";
+        DoOrDie cp -pR "${installUser}/.vnc" .;
+        echo "... set xstartup script";
+        DoOrDie cp -pf "${desktop}/.vnc/xstartup" .vnc/;
+        DoOrDie ln -sf .vnc/xstartup .xinitrc;
+        ;;
+
+      (*)
+        badOption "$1";
+        listOptions 6 xfce;
+        quit 1;
+        ;;
+    esac
+}
+
+### Local Variables: ***
+### mode:ksh ***
+### End: ***
