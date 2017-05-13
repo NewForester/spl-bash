@@ -24,6 +24,8 @@ function defineSteps
     kdeScreensaver=$major.$minor;
 
     minor=$((minor+1));
+    kdeDistroSpecifics=$major.$minor.D;
+    kdeReleaseSpecifics=$major.$minor.R;
     kdeHostSpecifics=$major.$minor.H;
     kdeUserSpecifics=$major.$minor.U;
 
@@ -34,6 +36,22 @@ function defineSteps
     kdeShowMythtv=$major.$minor.M;
     kdeShowWpo=$major.$minor.S;
     kdeShowEclipse=$major.$minor.E;
+}
+
+function kdeSpecifics
+{
+    local src="$1";
+    local copied=0;
+    local path;
+
+    if [[ -d "${src}" ]]; then
+        for path in $(find "${src}" -type f); do
+            DoOrDie cp -pR "${path}" ".kde/${path/${src}\//}";
+            copied=1;
+        done
+    fi
+
+    return ${copied};
 }
 
 function kdeConf
@@ -51,7 +69,7 @@ function kdeConf
 
       ($kdeConfiguration | kdeConfiguration)
         step="$kdeConfiguration kdeConfiguration";
-        note "Configure the KDE desktop - base configuration ...";
+        note "Common configuration for the KDE desktop ...";
 
         rm -fr .local/share/akonadi;
 
@@ -68,76 +86,88 @@ function kdeConf
 
       ($kdeDesktop | kdeDesktop)
         step="$kdeDesktop kdeDesktop";
-        note "Configure KDE power management for a desktop ...";
+        note "Configure KDE (power management) for a desktop ...";
 
-        mkdir -p .kde/share/config;
-        DoOrDie cp -pf "${desktop}/desktop/share/config"/* .kde/share/config;
+        if kdeSpecifics "${desktop}/desktop"; then
+            echo "... nothing to do";
+            quit;
+        fi
         ;;
 
       ($kdeLaptop | kdeLaptop)
         step="$kdeLaptop kdeLaptop";
-        note "Configure KDE power management for a laptop ...";
+        note "Configure KDE (power management) for a laptop ...";
 
-        mkdir -p .kde/share/config;
-        DoOrDie cp -pf "${desktop}/laptop/share/config"/* .kde/share/config;
+        if kdeSpecifics "${desktop}/laptop"; then
+            echo "... nothing to do";
+            quit;
+        fi
         ;;
 
       ($kdeScreensaver | kdeScreensaver)
         step="$kdeScreensaver kdeScreensaver";
         note "Configure the X screensaver for KDE ...";
 
-        if [[ -r "${desktop}/${USER}/.xscreensaver" ]]; then
-            DoOrDie cp -pf "${desktop}/${USER}/.xscreensaver" .;
-        elif [[ -r "${desktop}/${HOSTNAME}/.xscreensaver" ]]; then
-            DoOrDie cp -pf "${desktop}/${HOSTNAME}/.xscreensaver" .;
-        elif [[ -r "${desktop}/.xscreensaver" ]]; then
-            DoOrDie cp -pf "${desktop}/.xscreensaver" .;
-        elif [[ -r "${desktop}/../.xscreensaver" ]]; then
-            DoOrDie cp -pf "${desktop}/../.xscreensaver" .;
+        for dir in "${USER}" "${HOSTNAME}" "" ".."; do
+            local saver="${desktop}/${dir}/.xscreensaver";
+            if [[ -r "${saver}" ]]; then
+                DoOrDie cp -pf "${saver}" .;
+                break;
+            fi
+        done
+        ;;
+
+      ($kdeDistroSpecifics | kdeDistroSpecifics)
+        step="$kdeDistroSpecifics kdeDistroSpecifics";
+        note "Configure the KDE desktop - distribution specifics ...";
+
+        if kdeSpecifics "${desktop}/${installDist}"; then
+            echo "... nothing to do";
+            quit;
+        fi
+        ;;
+
+      ($kdeReleaseSpecifics | kdeReleaseSpecifics)
+        step="$kdeReleaseSpecifics kdeReleaseSpecifics";
+        note "Configure the KDE desktop - release specifics ...";
+
+        if kdeSpecifics "${desktop}/${installRelease}"; then
+            echo "... nothing to do";
+            quit;
         fi
         ;;
 
       ($kdeHostSpecifics | kdeHostSpecifics)
-        if [[ ! -d "${desktop}/${HOSTNAME}/" ]]; then
-            note "Nothing to do";
-            trap '-' EXIT;
-            exit;
-        fi
-
         step="$kdeHostSpecifics kdeHostSpecifics";
         note "Configure the KDE desktop - host specifics ...";
 
-        local path;
-        for path in $(ls -d "${desktop}/${HOSTNAME}"/*); do
-            DoOrDie cp -pR "${path}" .kde;
-        done
+        if kdeSpecifics "${desktop}/${HOSTNAME}"; then
+            echo "... nothing to do";
+            quit;
+        fi
         ;;
 
       ($kdeUserSpecifics | kdeUserSpecifics)
-        if [[ ! -d "${desktop}/${USER}/" ]]; then
-            note "Nothing to do";
-            trap '-' EXIT;
-            exit;
-        fi
-
         step="$kdeUserSpecifics kdeUserSpecifics";
         note "Configure the KDE desktop - user specifics ...";
 
-        local path
-        for path in $(ls -d "${desktop}/${USER}"/*); do
-            DoOrDie cp -pR "${path}" .kde;
-        done
+        if kdeSpecifics "${desktop}/${USER}"; then
+            echo "... nothing to do";
+            quit;
+        fi
+
+        kdeSpecifics "${desktop}/${USER}";
         ;;
 
       ($kdeVNC | kdeVNC)
         step="$kdeVNC kdeVNC";
         note "Configure VNC for KDE ...";
 
-        echo "... set password";
-        DoOrDie cp -pR "${installUser}/.vnc" .;
         echo "... set xstartup script";
         DoOrDie cp -pf "${desktop}/.vnc/xstartup" .vnc/;
         DoOrDie ln -sf .vnc/xstartup .xinitrc;
+        echo "... set password";
+        DoOrDie cp -pR "${installUser}/.vnc" .;
         ;;
 
       ($kdeShowMythtv | kdeShowMythtv)
