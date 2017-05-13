@@ -1,0 +1,145 @@
+#!/bin/bash --posix
+
+##
+##  Goal:   semi-automate user configuration of the kde desktop
+##
+##  Use:    source usrconf-kde
+##
+##  NB:     The caller must source functions etc à la usrconf script.
+##
+
+# do it
+
+function kdeConf
+{
+    local desktop="${installHome}/kde";
+
+    case "$1" in
+      (7 | kde)
+        listOptions 7 kde;
+        quit;
+        ;;
+
+      (7.1 | kdeDesktop)
+        step="7.1 kdeDesktop";
+        note "Configure the KDE desktop - base configuration ...";
+
+        rm -fr .local/share/akonadi;
+
+        local dir;
+        for dir in .kde .config .local; do
+            mkdir -m 700 -p "${dir}";
+
+            local path;
+            for path in $(ls -d "${desktop}/${dir}"/*); do
+                DoOrDie cp -pR "${path}" "${dir}";
+            done
+        done
+        ;;
+
+      (7.2.D | kdePMdesktop)
+        step="7.2.D kdePMdesktop";
+        note "Configure KDE power management for a desktop ...";
+
+        mkdir -p .kde/share/config;
+        DoOrDie cp -pf "${desktop}/desktop/share/config"/* .kde/share/config;
+        ;;
+
+      (7.2.L | kdePMlaptop)
+        step="7.2.L kdePMlaptop";
+        note "Configure KDE power management for a laptop ...";
+
+        mkdir -p .kde/share/config;
+        DoOrDie cp -pf "${desktop}/laptop/share/config"/* .kde/share/config;
+        ;;
+
+      (7.3 | kdeScreensaver)
+        step="7.3 kdeScreensaver";
+        note "Configure the X screensaver for KDE ...";
+
+        if [[ -r "${desktop}/${USER}/.xscreensaver" ]]; then
+            DoOrDie cp -pf "${desktop}/${USER}/.xscreensaver" .;
+        elif [[ -r "${desktop}/${HOSTNAME}/.xscreensaver" ]]; then
+            DoOrDie cp -pf "${desktop}/${HOSTNAME}/.xscreensaver" .;
+        elif [[ -r "${desktop}/.xscreensaver" ]]; then
+            DoOrDie cp -pf "${desktop}/.xscreensaver" .;
+        elif [[ -r "${desktop}/../.xscreensaver" ]]; then
+            DoOrDie cp -pf "${desktop}/../.xscreensaver" .;
+        fi
+        ;;
+
+      (7.4.H | kdeHostSpecifics)
+        if [[ ! -d "${desktop}/${HOSTNAME}/" ]]; then
+            note "Nothing to do";
+            trap '-' EXIT;
+            exit;
+        fi
+
+        step="7.4.H kdeHostSpecifics";
+        note "Configure the KDE desktop - host specifics ...";
+
+        local path;
+        for path in $(ls -d "${desktop}/${HOSTNAME}"/*); do
+            DoOrDie cp -pR "${path}" .kde;
+        done
+        ;;
+
+      (7.4.U | kdeUserSpecifics)
+        if [[ ! -d "${desktop}/${USER}/" ]]; then
+            note "Nothing to do";
+            trap '-' EXIT;
+            exit;
+        fi
+
+        step="7.4.U kdeUserSpecifics";
+        note "Configure the KDE desktop - user specifics ...";
+
+        local path
+        for path in $(ls -d "${desktop}/${USER}"/*); do
+            DoOrDie cp -pR "${path}" .kde;
+        done
+        ;;
+
+      (7.5 | kdeVNC)
+        step="7.5 kdeVNC";
+        note "Configure VNC for KDE ...";
+
+        echo "... set password";
+        DoOrDie cp -pR "${installUser}/.vnc" .;
+        echo "... set xstartup script";
+        DoOrDie cp -pf "${desktop}/.vnc/xstartup" .vnc/;
+        DoOrDie ln -sf .vnc/xstartup .xinitrc;
+        ;;
+
+      (7.6.M | kdeShowMythtv)
+        step="7.6.M kdeShowMythtv";
+        note "Show mythtv on favourites menu ...";
+
+        DoOrDie sed -e 's~kde4/Help~mythtv~' -i .kde/share/config/kickoffrc;
+        ;;
+
+      (7.6.W | kdeShowWpo)
+        step="7.6.W kdeShowWpo";
+        note "Show WPO on favourites menu ...";
+
+        DoOrDie sed -e 's~kde4/Help~wpoX3~' -i .kde/share/config/kickoffrc;
+        ;;
+
+      (7.6.E | kdeShowEclipse)
+        step="7.6.E kdeShowEclipse";
+        note "Show eclipse on favourites menu ...";
+
+        DoOrDie sed -e 's~kde4/kwrite~eclipse~' -i .kde/share/config/kickoffrc;
+        ;;
+
+      (*)
+        badOption "$1";
+        listOptions 7 kde;
+        quit 1;
+        ;;
+    esac
+}
+
+### Local Variables: ***
+### mode:ksh ***
+### End: ***
