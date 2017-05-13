@@ -8,20 +8,49 @@
 ##  NB:     The caller must source functions etc à la usrconf script.
 ##
 
-# do it
+function defineSteps
+{
+    local major="$1"; shift;
+    local minor=0;
+
+    minor=$((minor+1));
+    kdeConfiguration=$major.$minor;
+
+    minor=$((minor+1));
+    kdeDesktop=$major.$minor.D;
+    kdeLaptop=$major.$minor.L;
+
+    minor=$((minor+1));
+    kdeScreensaver=$major.$minor;
+
+    minor=$((minor+1));
+    kdeHostSpecifics=$major.$minor.H;
+    kdeUserSpecifics=$major.$minor.U;
+
+    minor=$((minor+1));
+    kdeVNC=$major.$minor;
+
+    minor=$((minor+1));
+    kdeShowMythtv=$major.$minor.M;
+    kdeShowWpo=$major.$minor.S;
+    kdeShowEclipse=$major.$minor.E;
+}
 
 function kdeConf
 {
+    local major="$1"; shift;
+    defineSteps $major;
+
     local desktop="${installHome}/kde";
 
     case "$1" in
-      (7 | kde)
-        listOptions 7 kde;
+      ($major | kde)
+        listOptions usrconf-kde "$1";
         quit;
         ;;
 
-      (7.1 | kdeDesktop)
-        step="7.1 kdeDesktop";
+      ($kdeConfiguration | kdeConfiguration)
+        step="$kdeConfiguration kdeConfiguration";
         note "Configure the KDE desktop - base configuration ...";
 
         rm -fr .local/share/akonadi;
@@ -37,24 +66,24 @@ function kdeConf
         done
         ;;
 
-      (7.2.D | kdePMdesktop)
-        step="7.2.D kdePMdesktop";
+      ($kdeDesktop | kdeDesktop)
+        step="$kdeDesktop kdeDesktop";
         note "Configure KDE power management for a desktop ...";
 
         mkdir -p .kde/share/config;
         DoOrDie cp -pf "${desktop}/desktop/share/config"/* .kde/share/config;
         ;;
 
-      (7.2.L | kdePMlaptop)
-        step="7.2.L kdePMlaptop";
+      ($kdeLaptop | kdeLaptop)
+        step="$kdeLaptop kdeLaptop";
         note "Configure KDE power management for a laptop ...";
 
         mkdir -p .kde/share/config;
         DoOrDie cp -pf "${desktop}/laptop/share/config"/* .kde/share/config;
         ;;
 
-      (7.3 | kdeScreensaver)
-        step="7.3 kdeScreensaver";
+      ($kdeScreensaver | kdeScreensaver)
+        step="$kdeScreensaver kdeScreensaver";
         note "Configure the X screensaver for KDE ...";
 
         if [[ -r "${desktop}/${USER}/.xscreensaver" ]]; then
@@ -68,14 +97,14 @@ function kdeConf
         fi
         ;;
 
-      (7.4.H | kdeHostSpecifics)
+      ($kdeHostSpecifics | kdeHostSpecifics)
         if [[ ! -d "${desktop}/${HOSTNAME}/" ]]; then
             note "Nothing to do";
             trap '-' EXIT;
             exit;
         fi
 
-        step="7.4.H kdeHostSpecifics";
+        step="$kdeHostSpecifics kdeHostSpecifics";
         note "Configure the KDE desktop - host specifics ...";
 
         local path;
@@ -84,14 +113,14 @@ function kdeConf
         done
         ;;
 
-      (7.4.U | kdeUserSpecifics)
+      ($kdeUserSpecifics | kdeUserSpecifics)
         if [[ ! -d "${desktop}/${USER}/" ]]; then
             note "Nothing to do";
             trap '-' EXIT;
             exit;
         fi
 
-        step="7.4.U kdeUserSpecifics";
+        step="$kdeUserSpecifics kdeUserSpecifics";
         note "Configure the KDE desktop - user specifics ...";
 
         local path
@@ -100,8 +129,8 @@ function kdeConf
         done
         ;;
 
-      (7.5 | kdeVNC)
-        step="7.5 kdeVNC";
+      ($kdeVNC | kdeVNC)
+        step="$kdeVNC kdeVNC";
         note "Configure VNC for KDE ...";
 
         echo "... set password";
@@ -111,30 +140,43 @@ function kdeConf
         DoOrDie ln -sf .vnc/xstartup .xinitrc;
         ;;
 
-      (7.6.M | kdeShowMythtv)
-        step="7.6.M kdeShowMythtv";
+      ($kdeShowMythtv | kdeShowMythtv)
+        step="$kdeShowMythtv kdeShowMythtv";
         note "Show mythtv on favourites menu ...";
 
         DoOrDie sed -e 's~kde4/Help~mythtv~' -i .kde/share/config/kickoffrc;
         ;;
 
-      (7.6.W | kdeShowWpo)
-        step="7.6.W kdeShowWpo";
+      ($kdeShowWpo | kdeShowWpo)
+        step="$kdeShowWpo kdeShowWpo";
         note "Show WPO on favourites menu ...";
 
         DoOrDie sed -e 's~kde4/Help~wpoX3~' -i .kde/share/config/kickoffrc;
         ;;
 
-      (7.6.E | kdeShowEclipse)
-        step="7.6.E kdeShowEclipse";
+      ($kdeShowEclipse | kdeShowEclipse)
+        step="$kdeShowEclipse kdeShowEclipse";
         note "Show eclipse on favourites menu ...";
 
         DoOrDie sed -e 's~kde4/kwrite~eclipse~' -i .kde/share/config/kickoffrc;
         ;;
 
+      ($major.99)
+        step="$major.99 sanityCheck";
+        note "Checking kde ...";
+        listLoggedSteps $major | while read step name status; do
+            printf "%-7s %-23s %s\n" $step $name $status;
+            case "$installDist $name" in
+              (*)
+                ;;
+            esac
+        done
+        quit;
+        ;;
+
       (*)
         badOption "$1";
-        listOptions 7 kde;
+        listOptions usrconf-kde $major;
         quit 1;
         ;;
     esac
