@@ -32,11 +32,18 @@ function defineSteps
 
 function officeConf
 {
-    local ourPython=/media/share/python/pbr;
-    local userConfig=.config/libreoffice/${2-3}/user;
-
     local major="$1"; shift;
     defineSteps $major;
+
+    local version="${2-4}";
+    local userConfig=".config/libreoffice/${version}/user";
+    local pythonRoot=/media/share/python/pbr;
+
+    if [[ "${version}" == "3" ]]; then
+        pythonRoot+=/liboff;
+    else
+        pythonRoot+=/office;
+    fi
 
     case "$1" in
       ($major | office)
@@ -45,7 +52,7 @@ function officeConf
         ;;
 
       ($officePresets | officePresets)
-        step="$officePresets.${2-3} officePresets";
+        step="$officePresets.${version} officePresets";
         note "Copy LibreOffice presets directory ...";
 
         DoOrDie mkdir -m 700 -p .config;
@@ -58,41 +65,31 @@ function officeConf
         ;;
 
       ($officeScripts | officeScripts)
-        step="$officeScripts.${2-3} officeScripts";
+        step="$officeScripts.${version} officeScripts";
         note "Install Python scripts for LibreOffice ...";
 
-        local scriptDir="${userConfig}/Scripts";
-
         DoOrDie mkdir -m 700 -p .config;
-        DoOrDie mkdir -p "${scriptDir}";
+        DoOrDie mkdir -p "${userConfig}/Scripts";
 
-        DoOrDie rm -f "${scriptDir}/python";
-        DoOrDie ln -sf "${ourPython}/liboff/calc/macros/" "${scriptDir}/python";
+        DoOrDie rm -f "${userConfig}/Scripts/python";
+        DoOrDie ln -sf "${pythonRoot}/macros/" "${userConfig}/Scripts/python";
         ;;
 
       ($officeAddins | officeAddins)
-        step="$officeAddins.${2-3} officeAddins";
+        step="$officeAddins.${version} officeAddins";
         note "Install Add-In Functions for Calc ...";
 
-        local addinDir="${userConfig}/uno_packages/cache";
-
         DoOrDie mkdir -m 700 -p .config;
-        DoOrDie mkdir -p "${addinDir}";
-
-        if [[ "${2-3}" == "3" ]]; then
-            addinList="ColumnLetters2.oxt PageName.oxt";
-        else
-            addinList="ColumnLetters3.oxt PageName.oxt";
-        fi
+        DoOrDie mkdir -p "${userConfig}/uno_packages/cache";
 
         local addin;
-        for addin in ${addinList}; do
-            DoOrDieLocal liboaddon install "${ourPython}/liboff/calc/addins/${addin}";
+        for addin in ColumnLetter.oxt PageName.oxt; do
+            DoOrDieLocal liboaddon install "${pythonRoot}/calc/addins/${addin}";
         done
         ;;
 
       ($officeUserData | officeUserData)
-        step="$officeUserData.${2-3} officeUserData";
+        step="$officeUserData.${version} officeUserData";
         note "Install User Settings ...";
 
         DoOrDie mkdir -m 700 -p .config;
