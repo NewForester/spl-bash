@@ -12,21 +12,40 @@
 ##  NB:     The caller must source functions etc à la usrconf script.
 ##
 
-# do it
+function defineSteps
+{
+    local major="$1"; shift;
+    local minor=0;
+
+    minor=$((minor+1));
+    officePresets=$major.$minor;
+
+    minor=$((minor+1));
+    officeScripts=$major.$minor;
+
+    minor=$((minor+1));
+    officeAddins=$major.$minor;
+
+    minor=$((minor+1));
+    officeUserData=$major.$minor;
+}
 
 function officeConf
 {
     local ourPython=/media/share/python/pbr;
     local userConfig=.config/libreoffice/${2-3}/user;
 
+    local major="$1"; shift;
+    defineSteps $major;
+
     case "$1" in
-      (10 | office)
-        listOptions 10 office;
+      ($major | office)
+        listOptions usrconf-office "$1";
         quit;
         ;;
 
-      (10.1 | officePresets)
-        step="10.1.${2-3} officePresets";
+      ($officePresets | officePresets)
+        step="$officePresets.${2-3} officePresets";
         note "Copy LibreOffice presets directory ...";
 
         DoOrDie mkdir -m 700 -p .config;
@@ -38,8 +57,8 @@ function officeConf
         done
         ;;
 
-      (10.2 | officeScripts)
-        step="10.2.${2-3} officeScripts";
+      ($officeScripts | officeScripts)
+        step="$officeScripts.${2-3} officeScripts";
         note "Install Python scripts for LibreOffice ...";
 
         local scriptDir="${userConfig}/Scripts";
@@ -51,8 +70,8 @@ function officeConf
         DoOrDie ln -sf "${ourPython}/liboff/calc/macros/" "${scriptDir}/python";
         ;;
 
-      (10.3 | officeAddins)
-        step="10.3.${2-3} officeAddins";
+      ($officeAddins | officeAddins)
+        step="$officeAddins.${2-3} officeAddins";
         note "Install Add-In Functions for Calc ...";
 
         local addinDir="${userConfig}/uno_packages/cache";
@@ -72,8 +91,8 @@ function officeConf
         done
         ;;
 
-      (10.4 | officeUserData)
-        step="10.4.${2-3} officeUserData";
+      ($officeUserData | officeUserData)
+        step="$officeUserData.${2-3} officeUserData";
         note "Install User Settings ...";
 
         DoOrDie mkdir -m 700 -p .config;
@@ -82,9 +101,22 @@ function officeConf
         DoOrDie cp -pR "${installUser}/${userConfig}"/* "${userConfig}";
         ;;
 
+      ($major.99)
+        step="$major.99 sanityCheck";
+        note "Checking office ...";
+        listLoggedSteps $major | while read step name status; do
+            printf "%-7s %-23s %s\n" $step $name $status;
+            case "$installDist $name" in
+              (*)
+                ;;
+            esac
+        done
+        quit;
+        ;;
+
       (*)
         badOption "$1";
-        listOptions 10 office;
+        listOptions usrconf-office $major;
         quit 1;
         ;;
     esac

@@ -86,7 +86,7 @@ case "$1" in
 
   (10* | office*)
     source usrconf-office;
-    officeConf "$@";
+    officeConf 10 "$@";
     ;;
 
   (1[0-9]*)
