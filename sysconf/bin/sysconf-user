@@ -85,25 +85,28 @@ function userConf
 
         case "${hostMachine}" in
           (x86_64)
-            DoOrDie sudo adduser pbr     --uid 1001;
-            DoOrDie sudo adduser ber     --uid 1002;
-            DoOrDie sudo adduser telly   --uid 1003;
-            DoOrDie sudo adduser work    --uid 1004;
-            DoOrDie sudo adduser mozilla --uid 1005 --disabled-login;
+            DoOrDie sudo adduser pbr     --uid 1001 --gecos "Paul Bryan Roberts,,,";
+            DoOrDie sudo adduser ber     --uid 1002 --gecos "Bryan Edwin Roberts,,,";
+            DoOrDie sudo adduser telly   --uid 1003 --gecos "Couch Potato,,,";
+            DoOrDie sudo adduser work    --uid 1004 --gecos "Zorilla,,,";
+            DoOrDie sudo adduser web     --uid 1005 --gecos "Anteles Paniscus,,,";
+            DoOrDie sudo adduser mozilla --uid 1010 --gecos "Mozilla Applications,,,"   --disabled-login;
             ;;
           (i686)
-            DoOrDie sudo adduser pbr     --uid 1001;
-            DoOrDie sudo adduser ber     --uid 1002;
-            DoOrDie sudo adduser telly   --uid 1003 --disabled-login;
-            DoOrDie sudo adduser work    --uid 1004 --disabled-login;
-            DoOrDie sudo adduser mozilla --uid 1005 --disabled-login;
+            DoOrDie sudo adduser pbr     --uid 1001 --gecos "Paul Bryan Roberts,,,";
+            DoOrDie sudo adduser ber     --uid 1002 --gecos "Bryan Edwin Roberts,,,";
+            DoOrDie sudo adduser telly   --uid 1003 --gecos "Couch Potato,,,"           --disabled-login;
+            DoOrDie sudo adduser work    --uid 1004 --gecos "Zorilla,,,"                --disabled-login;
+            DoOrDie sudo adduser web     --uid 1005 --gecos "Anteles Paniscus,,,"       --disabled-login;
+            DoOrDie sudo adduser mozilla --uid 1010 --gecos "Mozilla Applications,,,"   --disabled-login;
             ;;
           (qemu)
-            DoOrDie sudo adduser pbr     --uid 1001 --disabled-login;
-            DoOrDie sudo adduser ber     --uid 1002 --disabled-login;
-            DoOrDie sudo adduser telly   --uid 1003 --disabled-login;
-            DoOrDie sudo adduser work    --uid 1004;
-            DoOrDie sudo adduser mozilla --uid 1005 --disabled-login;
+            DoOrDie sudo adduser pbr     --uid 1001 --gecos "Paul Bryan Roberts,,,"     --disabled-login;
+            DoOrDie sudo adduser ber     --uid 1002 --gecos "Bryan Edwin Roberts,,,"    --disabled-login;
+            DoOrDie sudo adduser telly   --uid 1003 --gecos "Couch Potato,,,"           --disabled-login;
+            DoOrDie sudo adduser work    --uid 1004 --gecos "Zorilla,,,"
+            DoOrDie sudo adduser web     --uid 1005 --gecos "Anteles Paniscus,,,"       --disabled-login;
+            DoOrDie sudo adduser mozilla --uid 1010 --gecos "Mozilla Applications,,,"   --disabled-login;
             ;;
           (*)
             error "Processor \"${hostMachine}\" not recognised";
