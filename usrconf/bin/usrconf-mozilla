@@ -8,7 +8,24 @@
 ##  NB:     The caller must source functions etc à la usrconf script.
 ##
 
-# do it
+function defineSteps
+{
+    local major="$1"; shift;
+    local minor=0;
+
+    minor=$((minor+1));
+    mozillaFirefox=$major.$minor;
+
+    minor=$((minor+1));
+    mozillaThunderbird=$major.$minor;
+
+    minor=$((minor+1));
+    mozillaAdobeFlash=$major.$minor;
+
+    minor=$((minor+1));
+    mozillaDisableRoaming=$major.$minor.D;
+    mozillaEnableRoaming=$major.$minor.E;
+}
 
 function setupMozilla
 {
@@ -78,14 +95,17 @@ function setupMozilla
 
 function mozillaConf
 {
+    local major="$1"; shift;
+    defineSteps $major;
+
     case "$1" in
-      (11 | mozilla)
-        listOptions 11 mozilla;
+      ($major | mozilla)
+        listOptions usrconf-mozilla "$1";
         quit;
         ;;
 
-      (11.1 | mozillaFirefox)
-        step="11.1 mozillaFirefox";
+      ($mozillaFirefox | mozillaFirefox)
+        step="$mozillaFirefox mozillaFirefox";
         note "Configure Mozilla Firefox ...";
 
         DoOrDie mkdir -p .macromedia;
@@ -93,8 +113,8 @@ function mozillaConf
         setupMozilla firefox;
         ;;
 
-      (11.2 | mozillaThunderbird)
-        step="11.2 mozillaThunderbird";
+      ($mozillaThunderbird | mozillaThunderbird)
+        step="$mozillaThunderbird mozillaThunderbird";
         note "Configure Mozilla Thunderbird ...";
 
         setupMozilla thunderbird;
@@ -121,8 +141,8 @@ function mozillaConf
         DoOrDie ln -sf Mail/ ".mozilla/thunderbird/${USER}.${HOSTNAME}";
         ;;
 
-      (11.3 | mozillaAdobeFlash)
-        step="11.3 mozillaAdobeFlash";
+      ($mozillaAdobeFlash | mozillaAdobeFlash)
+        step="$mozillaAdobeFlash mozillaAdobeFlash";
         note "Install Adobe Flash plugin ...";
 
         DoOrDie mkdir -m 700 -p .mozilla;
@@ -133,8 +153,8 @@ function mozillaConf
         DoOrDie mkdir -p .macromedia;
         ;;
 
-      (11.4.D | mozillaDisableRoaming)
-        step="11.4.D mozillaDisableRoaming";
+      ($mozillaDisableRoaming | mozillaDisableRoaming)
+        step="$mozillaDisableRoaming mozillaDisableRoaming";
         note "Disable thunderbird roaming preferences ...";
 
         local prefsjs=".mozilla/thunderbird/${USER}.${HOSTNAME}/prefs.js";
@@ -146,8 +166,8 @@ function mozillaConf
         done
         ;;
 
-      (11.4.E | mozillaEnableRoaming)
-        step="11.4.E mozillaEnableRoaming";
+      ($mozillaEnableRoaming | mozillaEnableRoaming)
+        step="$mozillaEnableRoaming mozillaEnableRoaming";
         note "Enable thunderbird roaming preferences ...";
 
         local prefsjs=".mozilla/thunderbird/${USER}.${HOSTNAME}/prefs.js";
@@ -159,9 +179,22 @@ function mozillaConf
         done
         ;;
 
+      ($major.99)
+        step="$major.99 sanityCheck";
+        note "Checking mozilla ...";
+        listLoggedSteps $major | while read step name status; do
+            printf "%-7s %-23s %s\n" $step $name $status;
+            case "$installDist $name" in
+              (*)
+                ;;
+            esac
+        done
+        quit;
+        ;;
+
       (*)
         badOption "$1";
-        listOptions 11 mozilla;
+        listOptions usrconf-mozilla $major;
         quit 1;
         ;;
     esac

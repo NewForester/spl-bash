@@ -81,7 +81,7 @@ case "$1" in
 
   (11* | mozilla*)
     source usrconf-mozilla;
-    mozillaConf "$@";
+    mozillaConf 11 "$@";
     ;;
 
   (10* | office*)
