@@ -134,7 +134,7 @@ function userConf
         local app;
         for app in firefox thunderbird; do
             DoOrDie mkdir -p "/home/mozilla/${app}";
-            DoOrDie sudo cp -pR "${installShare}/usrconf/${app}/profile" "/home/mozilla/${app}";
+            DoOrDie sudo cp -pR "${installShare}/usrconf/${app}"/{profile,plugins} "/home/mozilla/${app}";
         done
         ;;
 
