@@ -1,0 +1,172 @@
+#!/bin/bash --posix
+
+##
+##  Goal:   semi-automate user configuration of Mozilla applications
+##
+##  Use:    source usrconf-mozilla
+##
+##  NB:     The caller must source functions etc à la usrconf script.
+##
+
+# do it
+
+function setupMozilla
+{
+    local path profile usrprofile migrate;
+
+    local application="$1" && shift;
+
+    # directories ...
+
+    profile="${application}/${USER}.${HOSTNAME}";
+
+    DoOrDie mkdir -m 700 -p .mozilla;
+    DoOrDie mkdir -p ".mozilla/${profile}";
+
+    # set up profiles.ini ...
+
+    DoOrDie cp -pf "${installHome}/${application}/profiles.ini" ".mozilla/${application}/";
+    DoOrDie sed -e "/Path=/s/.*/Path=${USER}.${HOSTNAME}/" -i ".mozilla/${application}/profiles.ini";
+
+    # common profile ...
+
+    for path in $(ls -d "/home/mozilla/${application}/profile"/*); do
+        case "$path" in
+          (*/plugins)
+            ;;
+          (*/adblockplus | */extensions)
+            DoOrDie ln -sf "${path}" ".mozilla/${profile}";
+            ;;
+          (*)
+            DoOrDie cp -pRL "${path}" ".mozilla/${profile}";
+            ;;
+        esac
+    done
+
+    # user profile ...
+
+    if [[ -d "${installHome}/${application}/${USER}" ]]; then
+       userProfile="${installHome}/${application}/${USER}";
+    else
+       userProfile="${installHome}/${application}/debian";
+    fi
+
+    for path in $(ls -d "${userProfile}"/*); do
+        if [[ -r "${path}" ]]; then
+            case "$path" in
+              (bookmarkbackups)
+                DoOrDie cp -pR "${path}" ".mozilla/${profile}";
+                ;;
+              (*.js | *.rdf | *.db | *.sqlite)
+                DoOrDie cp -p "${path}" ".mozilla/${profile}";
+                ;;
+            esac
+        fi
+    done
+
+    DoOrDie sed -e "s/${USER}.host/${USER}.${HOSTNAME}/g" -i ".mozilla/${profile}"/prefs.js;
+
+    # migration specifics ...
+
+    migrate="/media/share/linux/migration/${profile}";
+    if [[ -d "${migrate}" ]]; then
+        for path in $(ls -d "${migrate}"/*); do
+            DoOrDie cp -pR "${path}" ".mozilla/${profile}";
+        done
+    fi
+}
+
+function mozillaConf
+{
+    case "$1" in
+      (11 | mozilla)
+        listOptions 11 mozilla;
+        quit;
+        ;;
+
+      (11.1 | mozillaFirefox)
+        step="11.1 mozillaFirefox";
+        note "Configure Mozilla Firefox ...";
+
+        DoOrDie mkdir -p .macromedia;
+
+        setupMozilla firefox;
+        ;;
+
+      (11.2 | mozillaThunderbird)
+        step="11.2 mozillaThunderbird";
+        note "Configure Mozilla Thunderbird ...";
+
+        setupMozilla thunderbird;
+
+        # fix up top level directories ...
+
+        if which icedove &> /dev/null; then
+            DoOrDie rm -fr .icedove;
+            DoOrDie ln -sf .mozilla/thunderbird/ .icedove;
+        else
+            DoOrDie rm -fr .thunderbird;
+            DoOrDie ln -sf .mozilla/thunderbird/ .thunderbird;
+        fi
+
+        # folder for storage of mail ...
+
+        if [[ -d "/media/share/mail/${USER}/" ]]; then
+            DoOrDie rm -f Mail;
+            DoOrDie ln -sf "/media/share/mail/${USER}/" Mail;
+        else
+            DoOrDie mkdir -m 700 -p Mail;
+            DoOrDie mkdir -p Mail/Attachments;
+        fi
+        DoOrDie ln -sf Mail/ ".mozilla/thunderbird/${USER}.${HOSTNAME}";
+        ;;
+
+      (11.3 | mozillaAdobeFlash)
+        step="11.3 mozillaAdobeFlash";
+        note "Install Adobe Flash plugin ...";
+
+        DoOrDie mkdir -m 700 -p .mozilla;
+
+        DoOrDie mkdir -p .mozilla/plugins;
+        DoOrDie ln -sf /home/mozilla/firefox/plugins/libflashplayer.so .mozilla/plugins;
+
+        DoOrDie mkdir -p .macromedia;
+        ;;
+
+      (11.4.D | mozillaDisableRoaming)
+        step="11.4.D mozillaDisableRoaming";
+        note "Disable thunderbird roaming preferences ...";
+
+        local prefsjs=".mozilla/thunderbird/${USER}.${HOSTNAME}/prefs.js";
+
+        local preference;
+        for preference in delete_by_age_from_server delete_mail_left_on_server; do
+            echo sed -e '/.type", "pop3")/!d' -e 's/.type", "pop3"/.'${preference}'", true/' "${prefsjs}" '>>' "${prefsjs}";
+            sed -e '/.type", "pop3")/!d' -e 's/.type", "pop3"/.'${preference}'", true/' "${prefsjs}" >> "${prefsjs}" || exit 1;
+        done
+        ;;
+
+      (11.4.E | mozillaEnableRoaming)
+        step="11.4.E mozillaEnableRoaming";
+        note "Enable thunderbird roaming preferences ...";
+
+        local prefsjs=".mozilla/thunderbird/${USER}.${HOSTNAME}/prefs.js";
+
+        local preference;
+        for preference in delete_by_age_from_server delete_mail_left_on_server; do
+            echo sed -e '/mail\.server\.server[0-9]*.\.'${preference}'/d' -i "${prefsjs}";
+            sed -e '/mail\.server\.server[0-9]*.\.'${preference}'/d' -i "${prefsjs}" || exit 1;
+        done
+        ;;
+
+      (*)
+        badOption "$1";
+        listOptions 11 mozilla;
+        quit 1;
+        ;;
+    esac
+}
+
+### Local Variables: ***
+### mode:ksh ***
+### End: ***
