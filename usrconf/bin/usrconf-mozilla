@@ -65,7 +65,7 @@ function setupMozilla
     if [[ -d "${installHome}/${application}/${USER}" ]]; then
        userProfile="${installHome}/${application}/${USER}";
     else
-       userProfile="${installHome}/${application}/debian";
+       userProfile="${installHome}/${application}/${installDist}";
     fi
 
     for path in $(ls -d "${userProfile}"/*); do
@@ -117,17 +117,16 @@ function mozillaConf
         step="$mozillaThunderbird mozillaThunderbird";
         note "Configure Mozilla Thunderbird ...";
 
-        setupMozilla thunderbird;
-
         # fix up top level directories ...
 
-        if which icedove &> /dev/null; then
-            DoOrDie rm -fr .icedove;
-            DoOrDie ln -sf .mozilla/thunderbird/ .icedove;
-        else
-            DoOrDie rm -fr .thunderbird;
-            DoOrDie ln -sf .mozilla/thunderbird/ .thunderbird;
-        fi
+        for name in .thunderbird .icedove; do
+            if [[ -d "${name}" && ! -h  "${name}" ]]; then
+                DoOrDie mv "${name}" .mozilla/thunderbird/;
+                DoOrDie ln -sf .mozilla/thunderbird/ "${name}";
+            fi
+        done
+
+        setupMozilla thunderbird;
 
         # folder for storage of mail ...
 
@@ -161,8 +160,7 @@ function mozillaConf
 
         local preference;
         for preference in delete_by_age_from_server delete_mail_left_on_server; do
-            echo sed -e '/.type", "pop3")/!d' -e 's/.type", "pop3"/.'${preference}'", true/' "${prefsjs}" '>>' "${prefsjs}";
-            sed -e '/.type", "pop3")/!d' -e 's/.type", "pop3"/.'${preference}'", true/' "${prefsjs}" >> "${prefsjs}" || exit 1;
+            DoOrDie sed -i "${prefsjs}" -e "'/.type\", \"pop3\")/p;s/.type\", \"pop3\"/.${preference}\", true/'";
         done
         ;;
 
@@ -174,8 +172,7 @@ function mozillaConf
 
         local preference;
         for preference in delete_by_age_from_server delete_mail_left_on_server; do
-            echo sed -e '/mail\.server\.server[0-9]*.\.'${preference}'/d' -i "${prefsjs}";
-            sed -e '/mail\.server\.server[0-9]*.\.'${preference}'/d' -i "${prefsjs}" || exit 1;
+            DoOrDie sed -i "${prefsjs}" -e "'/mail\.server\.server[0-9]*.\.${preference}/d'";
         done
         ;;
 
