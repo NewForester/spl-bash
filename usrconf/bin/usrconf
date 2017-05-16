@@ -76,7 +76,7 @@ case "$1" in
 
   (12* | mythtv*)
     source usrconf-mythtv;
-    mythtvConf "$@";
+    mythtvConf 12 "$@";
     ;;
 
   (11* | mozilla*)

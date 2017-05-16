@@ -8,22 +8,44 @@
 ##  NB:     The caller must source functions etc à la usrconf script.
 ##
 
-# do it
+function defineSteps
+{
+    local major="$1"; shift;
+    local minor=0;
+
+    minor=$((minor+1));
+    mythtvUserSetup=$major.$minor;
+
+    minor=$((minor+1));
+    mythtvDvbCheck=$major.$minor;
+
+    minor=$((minor+1));
+    mythtvDvbScan=$major.$minor;
+
+    minor=$((minor+1));
+    mythtvSetup=$major.$minor;
+
+    minor=$((minor+1));
+    mythtvRestore=$major.$minor;
+}
 
 function mythtvConf
 {
+    local major="$1"; shift;
+    defineSteps $major;
+
     local mythtvRoot="/media/work/projects/mythtv/current";
     local tzapDir="${mythtvRoot}/.tzap";
     local mythtvDir="${mythtvRoot}/.mythtv";
 
     case "$1" in
-      (12 | mythtv)
-        listOptions 12 mythtv;
+      ($major | mythtv)
+        listOptions usrconf-mythtv "$1";
         quit;
         ;;
 
-      (12.1 | mythtvUserSetup)
-        step="12.1 mythtvUserSetup";
+      ($mythtvUserSetup | mythtvUserSetup)
+        step="$mythtvUserSetup mythtvUserSetup";
         note "Set up user id for MythTV and DVB project ...";
 
         echo "... install (shell) scripts";
@@ -46,8 +68,8 @@ function mythtvConf
         echo "... before taking further steps";
         ;;
 
-      (12.2 | mythtvDvbCheck)
-        step="12.2 mythtvDvbCheck";
+      ($mythtvDvbCheck | mythtvDvbCheck)
+        step="$mythtvDvbCheck mythtvDvbCheck";
         note "Check TV reception (generate channel list) ...";
 
         echo "... stop mythtv backend (if running)";
@@ -57,8 +79,8 @@ function mythtvConf
         DoOrDieLocal dvbcheck scan;
         ;;
 
-      (12.3 | mythtvDvbScan)
-        step="12.3 mythtvDvbScan";
+      ($mythtvDvbScan | mythtvDvbScan)
+        step="$mythtvDvbScan mythtvDvbScan";
         note "Do a channel scan and save the results ...";
 
         echo "... stop mythtv backend (if running)";
@@ -77,8 +99,8 @@ function mythtvConf
         echo '        dvbcheck xine "BBC ONE"';
         ;;
 
-      (12.4 | mythtvSetup)
-        step="12.4 mythtvSetup";
+      ($mythtvSetup | mythtvSetup)
+        step="$mythtvSetup mythtvSetup";
         note "Run mythtv setup ...";
 
         echo "... backup database";
@@ -94,8 +116,8 @@ function mythtvConf
         DoOrDieLocal mymythtv setup;
         ;;
 
-      (12.5 | mythtvRestore)
-        step="12.5 mythtvRestore";
+      ($mythtvRestore | mythtvRestore)
+        step="$mythtvRestore mythtvRestore";
         note "Restore MythTV database from the backup ...";
 
         echo "... restore database";
@@ -107,9 +129,22 @@ function mythtvConf
         DoOrDieLocal mymythtv setup;
         ;;
 
+      ($major.99)
+        step="$major.99 sanityCheck";
+        note "Checking mythtv ...";
+        listLoggedSteps $major | while read step name status; do
+            printf "%-7s %-23s %s\n" $step $name $status;
+            case "$installDist $name" in
+              (*)
+                ;;
+            esac
+        done
+        quit;
+        ;;
+
       (*)
         badOption "$1";
-        listOptions 12 mythtv;
+        listOptions usrconf-mythtv $major;
         quit 1;
         ;;
     esac
