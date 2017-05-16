@@ -1,0 +1,49 @@
+#!/bin/bash --posix
+
+##
+##  Goal:   test critical functions of the semi-automated system configuration
+##
+##  Use:    source sysconf-test
+##
+##  NB:     The caller must source functions etc à la sysconf script.
+##
+
+function defineSteps
+{
+    local major="$1"; shift;
+    local minor=0;
+}
+
+function testConf
+{
+    local major="$1"; shift;
+    defineSteps $major;
+
+    case "$1" in
+      ($major | test)
+        listOptions sysconf-test "$1";
+        quit;
+        ;;
+
+      ($major.99)
+        step="$major.99 sanityCheck";
+        note "Checking test ...";
+        listLoggedSteps $major | while read step name status; do
+            printf "%-7s %-23s %s\n" $step $name $status;
+            case "$installDist $name" in
+            esac
+        done
+        quit;
+        ;;
+
+      (*)
+        badOption "$1";
+        listOptions sysconf-test $major;
+        quit 1;
+        ;;
+    esac
+}
+
+### Local Variables: ***
+### mode:ksh ***
+### End: ***
