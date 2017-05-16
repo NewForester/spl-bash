@@ -34,7 +34,7 @@ function mythtvConf
     local major="$1"; shift;
     defineSteps $major;
 
-    local mythtvRoot="/media/work/projects/mythtv/current";
+    local mythtvRoot="/media/local/projects/mythtv/current";
     local tzapDir="${mythtvRoot}/.tzap";
     local mythtvDir="${mythtvRoot}/.mythtv";
 
@@ -46,7 +46,7 @@ function mythtvConf
 
       ($mythtvUserSetup | mythtvUserSetup)
         step="$mythtvUserSetup mythtvUserSetup";
-        note "Set up user id for MythTV and DVB project ...";
+        note "Set up user id for the MythTV and DVB projects ...";
 
         echo "... install (shell) scripts";
         DoOrDieLocal updatebin tv;
@@ -63,14 +63,14 @@ function mythtvConf
             DoOrDie cp -pR "${mythtvDir}/channels" .mythtv;
         fi
 
-        echo "... you may want to change ...";
+        echo "... you may want to change the symbolic link ...";
         echo "    ${mythtvRoot}";
-        echo "... before taking further steps";
+        echo "... to point to a new directory before taking further steps";
         ;;
 
       ($mythtvDvbCheck | mythtvDvbCheck)
         step="$mythtvDvbCheck mythtvDvbCheck";
-        note "Check TV reception (generate channel list) ...";
+        note "Check DVB reception (by scanning channels) ...";
 
         echo "... stop mythtv backend (if running)";
         DoOrDieLocal mymythtv stop;
@@ -81,7 +81,7 @@ function mythtvConf
 
       ($mythtvDvbScan | mythtvDvbScan)
         step="$mythtvDvbScan mythtvDvbScan";
-        note "Do a channel scan and save the results ...";
+        note "Generate a new channel list (by scanning channels) ...";
 
         echo "... stop mythtv backend (if running)";
         DoOrDieLocal mymythtv stop;
@@ -94,14 +94,14 @@ function mythtvConf
         echo '';
         note 'to test TV reception for real ...';
         echo '... in one tty run';
-        echo '        dvbcheck tzap "BBC ONE"';
+        echo '        dvbcheck tzap "BBC TWO"';
         echo '... and in another run ...';
-        echo '        dvbcheck xine "BBC ONE"';
+        echo '        dvbcheck xine "BBC TWO"';
         ;;
 
       ($mythtvSetup | mythtvSetup)
         step="$mythtvSetup mythtvSetup";
-        note "Run mythtv setup ...";
+        note "Run the MythTV setup program  ...";
 
         echo "... backup database";
         DoOrDieLocal mymythdb backup;
@@ -118,7 +118,7 @@ function mythtvConf
 
       ($mythtvRestore | mythtvRestore)
         step="$mythtvRestore mythtvRestore";
-        note "Restore MythTV database from the backup ...";
+        note "Restore the MythTV database from a backup ...";
 
         echo "... restore database";
         DoOrDieLocal mymythdb delete;
