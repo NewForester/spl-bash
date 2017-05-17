@@ -71,7 +71,7 @@ case "$1" in
 
   (20* | pull* | push*)
     source usrconf-apps;
-    appsConf "$@";
+    appsConf 20 "$@";
     ;;
 
   (12* | mythtv*)

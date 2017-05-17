@@ -2,13 +2,38 @@
 
 ##
 ##  Goal:   semi-automate push/pull of application configurations between hosts
+##              cheap and cheerful synchronisation support
 ##
 ##  Use:    source usrconf-apps
 ##
 ##  NB:     The caller must source functions etc à la usrconf script.
 ##
 
-# cheap and cheerful synchronisation support
+function defineSteps
+{
+    local major="$1"; shift;
+    local minor=0;
+
+    minor=$((minor+1));
+    pullFirefox=$major.$minor;
+    minor=$((minor+1));
+    pushFirefox=$major.$minor;
+
+    minor=$((minor+1));
+    pullThunderbird=$major.$minor;
+    minor=$((minor+1));
+    pushThunderbird=$major.$minor;
+
+    minor=$((minor+1));
+    pullPidgin=$major.$minor;
+    minor=$((minor+1));
+    pushPidgin=$major.$minor;
+
+    minor=$((minor+1));
+    pullKnode=$major.$minor;
+    minor=$((minor+1));
+    pushKnode=$major.$minor;
+}
 
 function pullConfiguration
 {
@@ -38,10 +63,9 @@ function pushConfiguration
 function adjustMozillaProfile
 {
     local app="$1"; shift;
-    local profile=$USER.$HOSTNAME;
 
-    cd ".mozilla/${app}/${profile}";
-    DoOrDie sed -e "s~${remoteProfile}~${profile}~g" -e "s~/home/${remoteUser}~${HOME}~g" -i "$@";
+    cd ".mozilla/${app}/${localProfile}";
+    DoOrDie sed -e "s~${remoteProfile}~${localProfile}~g" -e "s~/home/${remoteUser}~${HOME}~g" -i "$@";
     cd -;
 }
 
@@ -61,79 +85,97 @@ function appsConf
         exit 1;
     fi
 
+    local localProfile="${USER}.${HOSTNAME}";
+
+    local major="$1"; shift;
+    defineSteps $major;
+
     local profileFiles="extensions.ini extensions.json prefs.js search.json";
 
     case "$1" in
-      (20 | apps)
-        listOptions 20 apps;
+      ($major | apps)
+        listOptions usrconf-apps "$1";
         quit;
         ;;
 
-      (20.1 | pullFirefox)
-        step="20.1 pullFirefox";
+      ($pullFirefox | pullFirefox)
+        step="$pullFirefox pullFirefox";
         note "Pull firefox configuration from ${remoteLogin} ...";
 
-        pullConfiguration .mozilla/firefox/{$remoteProfile,$USER.$HOSTNAME}/;
+        pullConfiguration .mozilla/firefox/{${remoteProfile},${localProfile}}/;
 
         adjustMozillaProfile firefox ${profileFiles};
         ;;
 
-      (20.2 | pushFirefox)
-        step="20.2 pushFirefox";
+      ($pushFirefox | pushFirefox)
+        step="$pushFirefox pushFirefox";
         note "Push firefox configuration to ${remoteLogin} ...";
 
         pushConfiguration pullFirefox;
         ;;
 
-      (20.3 | pullThunderbird)
-        step="20.3 pullThunderbird";
+      ($pullThunderbird | pullThunderbird)
+        step="$pullThunderbird pullThunderbird";
         note "Pull thunderbird configuration from ${remoteLogin} ...";
 
         pullConfiguration .davmail.properties;
-        pullConfiguration .mozilla/thunderbird/{$remoteProfile,$USER.$HOSTNAME}/;
+        pullConfiguration .mozilla/thunderbird/{${remoteProfile},${localProfile}}/;
         pullConfiguration Mail/;
 
         adjustMozillaProfile thunderbird ${profileFiles} signature.html;
         ;;
 
-      (20.4 | pushThunderbird)
-        step="20.4 pushThunderbird";
+      ($pushThunderbird | pushThunderbird)
+        step="$pushThunderbird pushThunderbird";
         note "Push thunderbird configuration to ${remoteLogin} ...";
 
         pushConfiguration pullThunderbird;
         ;;
 
-      (20.5 | pullPidgin)
-        step="20.5 pullPidgin";
+      ($pullPidgin | pullPidgin)
+        step="$pullPidgin pullPidgin";
         note "Pull pidgin configuration from ${remoteLogin} ...";
 
         pullConfiguration .purple/;
         ;;
 
-      (20.6 | pushPidgin)
-        step="20.6 pushPidgin";
+      ($pushPidgin | pushPidgin)
+        step="$pushPidgin pushPidgin";
         note "Push pidgin configuration to ${remoteLogin} ...";
 
         pushConfiguration pullPidgin;
         ;;
 
-      (20.7 | pullKnode)
-        step="20.7 pullKnode";
+      ($pullKnode | pullKnode)
+        step="$pullKnode pullKnode";
         note "Pull KNode configuration and state from ${remoteLogin} ...";
 
         pullConfiguration .kde/share/config/knoderc .kde/share/apps/knode/;
         ;;
 
-      (20.8 | pushKnode)
-        step="20.8 pushKnode";
+      ($pushKnode | pushKnode)
+        step="$pushKnode pushKnode";
         note "Push KNode configuration and state to ${remoteLogin} ...";
 
         pushConfiguration pullKnode;
         ;;
 
+      ($major.99)
+        step="$major.99 sanityCheck";
+        note "Checking apps ...";
+        listLoggedSteps $major | while read step name status; do
+            printf "%-7s %-23s %s\n" $step $name $status;
+            case "$installDist $name" in
+              (*)
+                ;;
+            esac
+        done
+        quit;
+        ;;
+
       (*)
         badOption "$1";
-        listOptions 20 apps;
+        listOptions usrconf-apps $major;
         quit 1;
         ;;
     esac
