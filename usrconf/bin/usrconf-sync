@@ -35,6 +35,23 @@ function defineSteps
     pushKnode=$major.$minor;
 }
 
+function checkSetup
+{
+    if [[ -r "bin/usrconf.conf" ]]; then
+        source "bin/usrconf.conf";
+    else
+        note 'bin/usrconf.conf not found';
+        exit 1;
+    fi
+
+    for name in remoteUser remoteHost remoteProfile remoteLogin; do
+        if eval '${'"${name}"'}' 2> /dev/null; then
+            note '${'"${name}"'} not defined';
+            exit 1;
+        fi
+    done
+}
+
 function pullConfiguration
 {
     local src="$1"; shift;
@@ -71,25 +88,10 @@ function adjustMozillaProfile
 
 function syncConf
 {
-    if [[ -r "bin/usrconf.conf" ]]; then
-        source "bin/usrconf.conf";
-    fi
-
-    if [[ -z "${remoteUser}" ]]; then
-        note '${remoteUser} not defined';
-        exit 1;
-    fi
-
-    if [[ -z "${remoteHost}" ]]; then
-        note '${remoteHost} not defined';
-        exit 1;
-    fi
-
-    local localProfile="${USER}.${HOSTNAME}";
-
     local major="$1"; shift;
     defineSteps $major;
 
+    local localProfile="${USER}.${HOSTNAME}";
     local profileFiles="extensions.ini extensions.json prefs.js search.json";
 
     case "$1" in
@@ -102,6 +104,8 @@ function syncConf
         step="$pullFirefox pullFirefox";
         note "Pull firefox configuration from ${remoteLogin} ...";
 
+        checkSetup;
+
         pullConfiguration .mozilla/firefox/{${remoteProfile},${localProfile}}/;
 
         adjustMozillaProfile firefox ${profileFiles};
@@ -111,12 +115,16 @@ function syncConf
         step="$pushFirefox pushFirefox";
         note "Push firefox configuration to ${remoteLogin} ...";
 
+        checkSetup;
+
         pushConfiguration pullFirefox;
         ;;
 
       ($pullThunderbird | pullThunderbird)
         step="$pullThunderbird pullThunderbird";
         note "Pull thunderbird configuration from ${remoteLogin} ...";
+
+        checkSetup;
 
         pullConfiguration .davmail.properties;
         pullConfiguration .mozilla/thunderbird/{${remoteProfile},${localProfile}}/;
@@ -129,12 +137,16 @@ function syncConf
         step="$pushThunderbird pushThunderbird";
         note "Push thunderbird configuration to ${remoteLogin} ...";
 
+        checkSetup;
+
         pushConfiguration pullThunderbird;
         ;;
 
       ($pullPidgin | pullPidgin)
         step="$pullPidgin pullPidgin";
         note "Pull pidgin configuration from ${remoteLogin} ...";
+
+        checkSetup;
 
         pullConfiguration .purple/;
         ;;
@@ -143,6 +155,8 @@ function syncConf
         step="$pushPidgin pushPidgin";
         note "Push pidgin configuration to ${remoteLogin} ...";
 
+        checkSetup;
+
         pushConfiguration pullPidgin;
         ;;
 
@@ -150,12 +164,16 @@ function syncConf
         step="$pullKnode pullKnode";
         note "Pull KNode configuration and state from ${remoteLogin} ...";
 
+        checkSetup;
+
         pullConfiguration .kde/share/config/knoderc .kde/share/apps/knode/;
         ;;
 
       ($pushKnode | pushKnode)
         step="$pushKnode pushKnode";
         note "Push KNode configuration and state to ${remoteLogin} ...";
+
+        checkSetup;
 
         pushConfiguration pullKnode;
         ;;
