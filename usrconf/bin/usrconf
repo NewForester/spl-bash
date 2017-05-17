@@ -70,8 +70,8 @@ trap 'printf "%-23s %-7s %-23s ${result}\n" "$(date +"%x %X")" ${step} >> ${logF
 case "$1" in
 
   (20* | pull* | push*)
-    source usrconf-apps;
-    appsConf 20 "$@";
+    source usrconf-sync;
+    syncConf 20 "$@";
     ;;
 
   (12* | mythtv*)
