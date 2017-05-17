@@ -12,6 +12,9 @@ function defineSteps
 {
     local major="$1"; shift;
     local minor=0;
+
+    minor=$((minor+1));
+    testDeploy=$major.$minor;
 }
 
 function testConf
@@ -23,6 +26,42 @@ function testConf
       ($major | test)
         listOptions sysconf-test "$1";
         quit;
+        ;;
+
+      ($testDeploy | testDeploy)
+        step="$testDeploy testDeploy";
+        note "Test the Deploy() function";
+
+        echo "... test setup";
+        DoOrDie sudo mkdir -p /etc/test/;
+        DoOrDie sudo rm -f "/etc/test/deploy.*";
+
+        DoOrDie mkdir -p keep/etc/test;
+        DoOrDie rm -f "keep/etc/test/deploy.*";
+        DoOrDie cp -p "${installShare}/sysconf/etc/test/deploy.*" keep/etc/test;
+
+        DoOrDie sudo chmod 600 keep/etc/test/deploy.3;
+        DoOrDie sudo chown www-data:www-data keep/etc/test/deploy.3;
+
+        echo "... test a single file";
+        DoOrDie Deploy /etc/test/deploy.1;
+        DoOrDie CheckDeployed /etc/test/deploy.1;
+
+        echo "... test more than one file";
+        DoOrDie Deploy /etc/test/deploy.{1,2};
+        DoOrDie CheckDeployed /etc/test/deploy.{1,2};
+
+        echo "... test a file ordinary users cannot read";
+        DoOrDie Deploy --sudo /etc/test/deploy.3;
+        DoOrDie CheckDeployed --sudo /etc/test/deploy.3;
+
+        echo "... test the substitution of parameters";
+        DoOrDie Deploy /etc/test/deploy.4;
+        DoOrDie CheckDeployed /etc/test/deploy.4;
+
+        echo "... test post-conditions";
+        DoOrDie ls -l "/etc/test/deploy.*";
+        DoOrDie cat /etc/test/deploy.4;
         ;;
 
       ($major.99)
