@@ -1,0 +1,144 @@
+#!/bin/bash --posix
+
+##
+##  Goal:   semi-automate push/pull of application configurations between hosts
+##
+##  Use:    source usrconf-apps
+##
+##  NB:     The caller must source functions etc à la usrconf script.
+##
+
+# cheap and cheerful synchronisation support
+
+function pullConfiguration
+{
+    local src="$1"; shift;
+    local dst=${1-$src}; shift;
+
+    local flags="-ax --delete";
+    local excludes;
+
+    if [[ -d "${dst}" ]]; then
+        flags+=" --safe-links";
+        excludes=${dst%/}/rsync.excludes;
+
+        if [[ -r "${excludes}" ]]; then
+            flags+=" --exclude-from=${excludes}";
+        fi
+    fi
+
+    DoOrDie rsync ${flags} "${remoteLogin}":"${src}" "${dst}";
+}
+
+function pushConfiguration
+{
+    DoOrDie ssh "${remoteLogin}" bash -l \''${HOME}'/bin/usrconf "$@"\';
+}
+
+function adjustMozillaProfile
+{
+    local app="$1"; shift;
+    local profile=$USER.$HOSTNAME;
+
+    cd ".mozilla/${app}/${profile}";
+    DoOrDie sed -e "s~${remoteProfile}~${profile}~g" -e "s~/home/${remoteUser}~${HOME}~g" -i "$@";
+    cd -;
+}
+
+function appsConf
+{
+    if [[ -r "bin/usrconf.conf" ]]; then
+        source "bin/usrconf.conf";
+    fi
+
+    if [[ -z "${remoteUser}" ]]; then
+        note '${remoteUser} not defined';
+        exit 1;
+    fi
+
+    if [[ -z "${remoteHost}" ]]; then
+        note '${remoteHost} not defined';
+        exit 1;
+    fi
+
+    local profileFiles="extensions.ini extensions.json prefs.js search.json";
+
+    case "$1" in
+      (20 | apps)
+        listOptions 20 apps;
+        quit;
+        ;;
+
+      (20.1 | pullFirefox)
+        step="20.1 pullFirefox";
+        note "Pull firefox configuration from ${remoteLogin} ...";
+
+        pullConfiguration .mozilla/firefox/{$remoteProfile,$USER.$HOSTNAME}/;
+
+        adjustMozillaProfile firefox ${profileFiles};
+        ;;
+
+      (20.2 | pushFirefox)
+        step="20.2 pushFirefox";
+        note "Push firefox configuration to ${remoteLogin} ...";
+
+        pushConfiguration pullFirefox;
+        ;;
+
+      (20.3 | pullThunderbird)
+        step="20.3 pullThunderbird";
+        note "Pull thunderbird configuration from ${remoteLogin} ...";
+
+        pullConfiguration .davmail.properties;
+        pullConfiguration .mozilla/thunderbird/{$remoteProfile,$USER.$HOSTNAME}/;
+        pullConfiguration Mail/;
+
+        adjustMozillaProfile thunderbird ${profileFiles} signature.html;
+        ;;
+
+      (20.4 | pushThunderbird)
+        step="20.4 pushThunderbird";
+        note "Push thunderbird configuration to ${remoteLogin} ...";
+
+        pushConfiguration pullThunderbird;
+        ;;
+
+      (20.5 | pullPidgin)
+        step="20.5 pullPidgin";
+        note "Pull pidgin configuration from ${remoteLogin} ...";
+
+        pullConfiguration .purple/;
+        ;;
+
+      (20.6 | pushPidgin)
+        step="20.6 pushPidgin";
+        note "Push pidgin configuration to ${remoteLogin} ...";
+
+        pushConfiguration pullPidgin;
+        ;;
+
+      (20.7 | pullKnode)
+        step="20.7 pullKnode";
+        note "Pull KNode configuration and state from ${remoteLogin} ...";
+
+        pullConfiguration .kde/share/config/knoderc .kde/share/apps/knode/;
+        ;;
+
+      (20.8 | pushKnode)
+        step="20.8 pushKnode";
+        note "Push KNode configuration and state to ${remoteLogin} ...";
+
+        pushConfiguration pullKnode;
+        ;;
+
+      (*)
+        badOption "$1";
+        listOptions 20 apps;
+        quit 1;
+        ;;
+    esac
+}
+
+### Local Variables: ***
+### mode:ksh ***
+### End: ***
