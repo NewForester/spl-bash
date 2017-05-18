@@ -15,6 +15,9 @@ function defineSteps
 
     minor=$((minor+1));
     testDeploy=$major.$minor;
+
+    minor=$((minor+1));
+    testSaveCurrent=$major.$minor;
 }
 
 function testConf
@@ -62,6 +65,30 @@ function testConf
         echo "... test post-conditions";
         DoOrDie ls -l "/etc/test/deploy.*";
         DoOrDie cat /etc/test/deploy.4;
+        ;;
+
+      ($testSaveCurrent | testSaveCurrent)
+        step="$testSaveCurrent testSaveCurrent";
+        note "Test the SaveCurrent() function";
+
+        echo "... test setup";
+        DoOrDie sudo mkdir -p /etc/test/;
+        DoOrDie mkdir -p keep/etc/test;
+
+        DoOrDie rm -f "keep/etc/test/{passwd,group,sudoers}";
+        DoOrDie sudo cp -p "/etc/{passwd,group,sudoers}" /etc/test;
+
+        echo "... test more than one file";
+        DoOrDie SaveCurrent /etc/test/{passwd,group};
+        DoOrDie CheckCurrent /etc/test/{passwd,group};
+
+        echo "... test a file ordinary users cannot read";
+        DoOrDie SaveCurrent --sudo /etc/test/sudoers;
+        DoOrDie CheckCurrent --sudo /etc/test/sudoers;
+
+        echo "... test post-conditions";
+        DoOrDie ls -l "/etc/test/{passwd,group,sudoers}";
+        DoOrDie ls -l "keep/etc/test/{passwd,group,sudoers}";
         ;;
 
       ($major.99)
