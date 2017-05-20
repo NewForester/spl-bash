@@ -21,6 +21,9 @@ function defineSteps
 
     minor=$((minor+1));
     testCopyToKeep=$major.$minor;
+
+    minor=$((minor+1));
+    testFetchOurOwn=$major.$minor;
 }
 
 function testConf
@@ -135,6 +138,40 @@ function testConf
 
         echo "... test post-conditions";
         DoOrDie ls -lv 'keep/etc/test/copyToKeep*';
+        ;;
+
+      ($testFetchOurOwn | testFetchOurOwn)
+        step="$testFetchOurOwn testFetchOurOwn";
+        note "Test the FetchOurOwn() function";
+
+        echo "... test setup";
+        DoOrDie mkdir -p keep/etc/test;
+
+        DoOrDie rm -f 'keep/etc/test/ourOwn*';
+
+        echo "... expect failure";
+        DoOrDie CheckMaster /etc/test/neverWas;
+
+        echo "... expect failure";
+        DoOrDie CheckMaster /etc/test/ourOwn;
+        echo "... expect success";
+        DoOrDie FetchOurOwn /etc/test/ourOwn;
+        DoOrDie CheckMaster /etc/test/ourOwn;
+
+        echo "... expect failure";
+        DoOrDie alternative=laptop;
+        DoOrDie CheckMaster /etc/test/ourOwn;
+
+        echo "... expect success";
+        DoOrDie alternative=desktop;
+        DoOrDie CheckMaster /etc/test/ourOwn;
+
+        echo "... expect success";
+        DoOrDie FetchOurOwn --sudo /etc/test/ourOwnNoRead;
+        DoOrDie CheckMaster --sudo /etc/test/ourOwnNoRead;
+
+        echo "... test post-conditions";
+        DoOrDie ls -l 'keep/etc/test/ourOwn*';
         ;;
 
       ($major.99)
