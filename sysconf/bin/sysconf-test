@@ -27,6 +27,9 @@ function defineSteps
 
     minor=$((minor+1));
     testInstallOurOwn=$major.$minor;
+
+    minor=$((minor+1));
+    testRemoveOurOwn=$major.$minor;
 }
 
 function testConf
@@ -200,6 +203,39 @@ function testConf
 
         echo "... test post-conditions";
         DoOrDie ls -l '/etc/test/ourOwn*';
+        ;;
+
+      ($testRemoveOurOwn | testRemoveOurOwn)
+        step="$testRemoveOurOwn testRemoveOurOwn";
+        note "Test the RemoveOurOwn() function";
+
+        echo "... test setup";
+        DoOrDie sudo mkdir -p /etc/test/;
+        DoOrDie mkdir -p keep/etc/test;
+
+        DoOrDie sudo rm -f '/etc/test/ourOwn*';
+        DoOrDie rm -f 'keep/etc/test/ourOwn*';
+
+        echo "... expect success";
+        DoOrDie InstallOurOwn --sudo /etc/test/ourOwnNoRead;
+        DoOrDie CheckOurOwn --sudo /etc/test/ourOwnNoRead;
+
+        echo "... expect success";
+        DoOrDie InstallOurOwn /etc/test/ourOwn;
+        DoOrDie CheckOurOwn /etc/test/ourOwn;
+
+        echo "... expect success";
+        DoOrDie RemoveOurOwn /etc/test/ourOwn /etc/test/ourOwnNoRead;
+
+        echo "... expect failure";
+        DoOrDie CheckOurOwn /etc/test/ourOwn;
+
+        echo "... expect failure";
+        DoOrDie CheckOurOwn --sudo /etc/test/ourOwnNoRead;
+
+        echo "... test post-conditions";
+        DoOrDie ls -l '/etc/test/ourOwn*';
+        DoOrDie ls -l 'keep/etc/test/ourOwn*';
         ;;
 
       ($major.99)
