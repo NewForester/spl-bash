@@ -30,6 +30,9 @@ function defineSteps
 
     minor=$((minor+1));
     testRemoveOurOwn=$major.$minor;
+
+    minor=$((minor+1));
+    testApplyPatch=$major.$minor;
 }
 
 function testConf
@@ -236,6 +239,43 @@ function testConf
         echo "... test post-conditions";
         DoOrDie ls -l '/etc/test/ourOwn*';
         DoOrDie ls -l 'keep/etc/test/ourOwn*';
+        ;;
+
+      ($testApplyPatch | testApplyPatch)
+        step="$testApplyPatch testApplyPatch";
+        note "Test the ApplyPatch() function";
+
+        echo "... test setup";
+        DoOrDie sudo mkdir -p /etc/test/;
+        DoOrDie mkdir -p keep/etc/test;
+
+        DoOrDie sudo cp -p /etc/test/patchMe.orig /etc/test/patchMe;
+        DoOrDie rm -f "keep/etc/test/patchMe.{,$RELEASE,patch}";
+
+        DoOrDie sudo cp -p /etc/test/patchMeToo.orig /etc/test/patchMeToo;
+        DoOrDie rm -f "keep/etc/test/patchMeToo.{,$RELEASE,patch}";
+
+        DoOrDie sudo cp -p /etc/test/patchThis.orig /etc/test/patchThis;
+        DoOrDie rm -f "keep/etc/test/patchThis.{,$RELEASE,patch} keep/etc/test/patchThisAgain.patch";
+
+        echo "... expect success";
+        DoOrDie CopyToKeep /etc/test/patchMe;
+        DoOrDie ApplyPatch /etc/test/patchMe;
+        DoOrDie CheckPatch /etc/test/patchMe;
+
+        echo "... expect success";
+        DoOrDie CopyToKeep /etc/test/{patchMe,patchMeToo};
+        DoOrDie ApplyPatch /etc/test/{patchMe,patchMeToo};
+        DoOrDie CheckPatch /etc/test/{patchMe,patchMeToo};
+
+        echo "... expect success";
+        DoOrDie CopyToKeep --sudo /etc/test/patchThis;
+        DoOrDie ApplyPatch --sudo /etc/test/patchThis patchThisAgain;
+        DoOrDie CheckPatch /etc/test/patchThis patchThisAgain;
+
+        echo "... test post-conditions";
+        DoOrDie ls -l '/etc/test/patch*';
+        DoOrDie ls -l 'keep/etc/test/patch*';
         ;;
 
       ($major.99)
