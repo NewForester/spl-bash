@@ -33,6 +33,9 @@ function defineSteps
 
     minor=$((minor+1));
     testApplyPatch=$major.$minor;
+
+    minor=$((minor+1));
+    testInsertIntoFile=$major.$minor;
 }
 
 function testConf
@@ -276,6 +279,39 @@ function testConf
         echo "... test post-conditions";
         DoOrDie ls -l '/etc/test/patch*';
         DoOrDie ls -l 'keep/etc/test/patch*';
+        ;;
+
+      ($testInsertIntoFile | testInsertIntoFile)
+        step="$testInsertIntoFile testInsertIntoFile";
+        note "Test the InsertIntoFile() function";
+
+        echo "... test setup";
+        DoOrDie sudo cp -p /etc/test/hosts.orig /etc/test/hosts;
+        DoOrDie sudo cp -p /etc/test/hosts.allow.orig /etc/test/hosts.allow;
+
+        DoOrDie rm -f keep/etc/test/{hosts,hosts.allow};
+        DoOrDie rm -f keep/etc/test/{hosts,hosts.allow}.${RELEASE};
+        DoOrDie rm -rf keep/etc/test/{hosts,hosts.allow}.d;
+
+        echo "... expect success";
+        DoOrDie CopyToKeep /etc/test/hosts;
+        DoOrDie InsertIntoFile '2' /etc/test/hosts hosts-{local,vpn};
+        DoOrDie Deploy /etc/test/hosts;
+        DoOrDie CheckDotDir /etc/test/hosts hosts-{local,vpn};
+
+        echo "... expect success";
+        DoOrDie CopyToKeep /etc/test/hosts.allow;
+        DoOrDie InsertIntoFile '/localhost/' /etc/test/hosts.allow hosts.allow-{ssh,nfs,mysql};
+        DoOrDie Deploy /etc/test/hosts.allow;
+        DoOrDie CheckDotDir /etc/test/hosts.allow hosts.allow-{ssh,nfs,mysql};
+
+        echo "... test post-conditions";
+        DoOrDie ls -ld '/etc/test/hosts*';
+        DoOrDie ls -ld 'keep/etc/test/hosts*';
+        DoOrDie ls -l 'keep/etc/test/hosts.d';
+        DoOrDie ls -l 'keep/etc/test/hosts.allow.d';
+        DoOrDie cat /etc/test/hosts;
+        DoOrDie cat /etc/test/hosts.allow;
         ;;
 
       ($major.99)
