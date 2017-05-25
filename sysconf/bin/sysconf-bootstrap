@@ -226,12 +226,6 @@ function bootstrapConf
         echo "... save installation package list";
         DoOrDie mkdir -p keep/dpkg;
         DoOrDieLocal dpkglistsave "install.${RELEASE}";
-
-        echo "... backup grub configuration";
-        DoOrDie CopyToKeep /boot/grub/grub.cfg;
-        if [[ -e /boot/grub/device.map ]]; then
-            DoOrDie CopyToKeep /boot/grub/device.map;
-        fi
         ;;
 
       ($numlockOn | numlockOn)
@@ -253,6 +247,7 @@ function bootstrapConf
                 ;;
               (*initialSave)
                 CheckOriginal /etc/{group,passwd};
+                # obsolescent - remove next release
                 CheckOriginal /boot/grub/grub.cfg;
                 CheckOriginal --opt /boot/grub/device.map;
                 ;;

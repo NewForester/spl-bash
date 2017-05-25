@@ -14,6 +14,9 @@ function defineSteps
     local minor=0;
 
     minor=$((minor+1));
+    grubInitialSave=$major.$minor;
+
+    minor=$((minor+1));
     grubNoUuid=$major.$minor;
 
     minor=$((minor+1));
@@ -41,6 +44,17 @@ function grubConf
       ($major | grub)
         listOptions sysconf-grub "$1";
         quit;
+        ;;
+
+      ($grubInitialSave | grubInitialSave)
+        step="$grubInitialSave grubInitialSave";
+        note "Initial save of grub configuration files ...";
+
+        echo "... backup grub configuration";
+        DoOrDie CopyToKeep /boot/grub/grub.cfg;
+        if [[ -e /boot/grub/device.map ]]; then
+            DoOrDie CopyToKeep /boot/grub/device.map;
+        fi
         ;;
 
        ($grubNoUuid | grubNoUuid)
@@ -117,6 +131,10 @@ function grubConf
         listLoggedSteps $major | while read step name status; do
             printf "%-7s %-23s %s\n" $step $name $status;
             case "$installDist $name" in
+              (*grubInitialSave)
+                CheckOriginal /boot/grub/grub.cfg;
+                CheckOriginal --opt /boot/grub/device.map;
+                ;;
               (*grubNoUuid)
                 CheckCurrent "${cfg}";
                 ;;
