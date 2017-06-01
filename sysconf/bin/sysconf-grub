@@ -5,7 +5,31 @@
 ##
 ##  Use:    source sysconf-grub
 ##
-##  NB:     The caller must source functions etc à la sysconf script.
+##          grubConf step-number-or-name
+##
+##  NB:     This script is expected to be sourced by the sysconf script:
+##          it is not expected to be used standalone.
+##
+##  There are three steps commented out that have been pertinent in the past
+##  and may still be on certain hosts.
+##
+##  The first step should always be run in the interests of disaster recovery.
+##
+##  The other two steps arise from how the dual disk system was set up.  A boot
+##  partition was created on each disk but these are not under RAID I so they
+##  are separate partitions with distinct UUIDs.  It should be possible to boot
+##  the system with only one disk.  Either disk.
+##
+##  The grub configuration that is generated is defaced with the UUID of the
+##  boot partition of the first disk making it impossible to boot from the
+##  second disk.
+##
+##  One of the steps alters grub configuration so that the UUID is not used.
+##  The second copies the contents of the first boot partition to the second
+##  so that it can be kept in sync (by hand).
+##
+##  The next installation will try the two boot partitions in a RAID I
+##  configuration and these steps should be unnecessary.
 ##
 
 function defineSteps
