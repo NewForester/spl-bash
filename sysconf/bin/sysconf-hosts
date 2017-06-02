@@ -5,7 +5,35 @@
 ##
 ##  Use:    source sysconf-hosts
 ##
-##  NB:     The caller must source functions etc à la sysconf script.
+##          hostsConf step-number-or-name
+##
+##  NB:     This script is expected to be sourced by the sysconf script:
+##          it is not expected to be used standalone.
+##
+##  This script configures a number of network related files:
+##
+##      /etc/ethers
+##      /etc/networks
+##      /etc/hosts
+##      /etc/hosts.allow
+##      /etc/hosts.deny
+##
+##  The deployed /etc/hosts and /etc/hosts.allow files are constructed
+##  using the files found in keep/etc/hosts.d and keep/etc/hosts.allow.d
+##  subdirectories.
+##
+##  Several later steps (such as vpnHosts) add files to these directories
+##  and then construct and deploy the /etc files again.
+##
+##  For debug purposes, the subdirectories can be deleted to restart with
+##  a clean slate.  Use the step number (not name) and the suffix .R.  Thus:
+##
+##      sysconf 4.1.R   # deletes keep/etc/hosts.d
+##      sysconf 4.2.R   # deleted keep.etc/hosts.allow.d
+##
+##  The file /etc/ethers is optional.  It has been used at work to identity
+##  hosts by Ethernet address on a WIFI network that used dynamic allocation
+##  of IP addresses.
 ##
 
 function defineSteps
