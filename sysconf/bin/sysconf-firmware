@@ -5,7 +5,33 @@
 ##
 ##  Use:    source sysconf-firmware
 ##
-##  NB:     The caller must source functions etc à la sysconf script.
+##          firemwareConf step-number-or-name [save|restore|check]
+##
+##  NB:     This script is expected to be sourced by the sysconf script:
+##          it is not expected to be used standalone.
+##
+##  This script will install firmware from the distribution's repositories.  Eg:
+##
+##      sysconf firmwareRadeon
+##
+##  It may also be used to save/restore firmware to/from a local archive.  Eg:
+##
+##      sysconf firmwareRadeon save
+##      sysconf firmwareRadeon restore
+##
+##  and the deployed firmware may also be compared with the local archive. Eg:
+##
+##      sysconf firmwareRadeon check
+##
+##  The script handles device firmware and processor microcode the same way.
+##
+##  Originally, device firmware was just WIFI device firmware that was needed
+##  on USB for installation of the OS.  Therefore the pertinent firmware blobs
+##  were obtained off-line and saved in the local archive.
+##
+##  The local archive is retained because we do have a couple of firmware blobs
+##  that are not found in distribution's repositories and so must be installed
+##  from the archive.
 ##
 
 function defineSteps
