@@ -5,7 +5,33 @@
 ##
 ##  Use:    source sysconf-x11
 ##
-##  NB:     The caller must source functions etc à la sysconf script.
+##          x11Conf step-number-or-name
+##
+##  NB:     This script is expected to be sourced by the sysconf script:
+##          it is not expected to be used standalone.
+##
+##  This script applies local configuration changes to the X11 configuration.
+##
+##  Over the years the configuration of output devices (video drivers and
+##  screen has become less important than the configuration of input devices
+##  keyboard, mouse and touchpad).
+##
+##  The first step sets X11 keyboard options for the host that are overridden
+##  by desktop settings for specific users (e.g use of APL keyboard).
+##
+##  The second step is pertinent on laptops only.  It installs scripts whose
+##  task is to ensure the laptop's touchpad is disabled while a USB mouse is
+##  plugged in.
+##
+##  The third step switches mouse behaviour from 'panning' to 'pivoting'.
+##
+##  The fourth step has been pertinent in the past within virtual machines.
+##
+##  The remaining steps are legacy steps for old hosts with old displays.
+##
+##  The final step is for Xinerama.  This allowed a laptop with an external
+##  display plugged to be used as a dual display machine.  It suspect Xinerama
+##  is obsolete but that dual display configurations are still pertinent.
 ##
 
 function defineSteps
