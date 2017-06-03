@@ -5,7 +5,21 @@
 ##
 ##  Use:    source sysconf-apt
 ##
-##  NB:     The caller must source functions etc à la sysconf script.
+##          aptConf step-number-or-name
+##
+##  NB:     This script is expected to be sourced by the sysconf script:
+##          it is not expected to be used standalone.
+##
+##  This script was orginally just about the configuration apt for local use.
+##  This included setting up additional repositories for Mozilla and Mythtv.
+##  The final step always brought the installation up to date.
+##
+##  Later a step was added to configure the host as a client of a squid proxy.
+##  This means packages are downloaded once from the repository and then
+##  installed over the LAN.
+##
+##  More steps have been added to install and configure the proxy and now the
+##  script needs splitting in two.
 ##
 
 function defineSteps
