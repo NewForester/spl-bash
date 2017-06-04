@@ -5,7 +5,22 @@
 ##
 ##  Use:    source sysconf-udev
 ##
-##  NB:     The caller must source functions etc à la sysconf script.
+##          udevConf step-number-or-name
+##
+##  NB:     This script is expected to be sourced by the sysconf script:
+##          it is not expected to be used standalone.
+##
+##  This script is concerned with udev rules and the persistence of device
+##  numbers.
+##
+##  The first steps backs up the rules concerning optical drive and network
+##  interface numbering.  On certain hosts, the script then suggests one or
+##  other of these may need to be altered to be consistent with the device
+##  numbering in force under the previous installation.
+##
+##  The other steps install extra rules of no real concern to this script.
+##  The first is pertinent on laptops only, the second on hosts on which
+##  virtual machines may be run.
 ##
 
 function defineSteps
