@@ -5,7 +5,36 @@
 ##
 ##  Use:    source sysconf-blkdev
 ##
-##  NB:     The caller must source functions etc à la sysconf script.
+##          blkdevConf step-number-or-name
+##
+##  NB:     This script is expected to be sourced by the sysconf script:
+##          it is not expected to be used standalone.
+##
+##  This is an important script that reflects disk partitioning policy.
+##
+##  The script has been revised and simplified again for the current upgrade:
+##  the old code is still present just in case.
+##
+##  The script's main task is to set up /etc/fstab.  The file created by the
+##  installation is expressed in terms of UUIDs, which only to problems.
+##
+##  In the past this was replaced by a file expressed in terms of volume labels.
+##  Although this meant the files on all hosts were very similar (with a large
+##  common subset of entries), it was insufficient to avoid the archive having
+##  a master /etc/fstab specific to each host.
+##
+##  For this revision, /etc/fstab is expressed in terms of devices.  There
+##  will be one archive master that will be the super set of all host specific
+##  /etc/fstab files.  This script's job is to remove from the copied master
+##  those entries for devices that do not exist on this host.
+##
+##  For this upgrade (and going forward) the intention is to create all file
+##  systems on an LVM.  This makes the use of a common super set /etc/fstab
+##  possible.  The design is intended to cope with the installation of more
+##  than one Linux distribution on the same LVM.
+##
+##  Although this version uses device names, it could easily be revised later
+##  to convert these to volume lables or even UUIDs.
 ##
 
 function defineSteps
