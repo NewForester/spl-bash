@@ -5,7 +5,49 @@
 ##
 ##  Use:    source sysconf-net
 ##
-##  NB:     The caller must source functions etc à la sysconf script.
+##          netConf step-number-or-name
+##
+##  NB:     This script is expected to be sourced by the sysconf script:
+##          it is not expected to be used standalone.
+##
+##  This script is concerned with configuring network interfaces.
+##
+##  It was heavily revised between the last release and this one:  the old
+##  steps remain, commented out, just in case.  In the near future the
+##  reordering of steps is likely.
+##
+##  At the time this script was first written, the 'network manager' was a
+##  relatively new component of the desktop.  After a couple of kerfuffles, it
+##  was decided that particular piece of patronware had to go.  It was replaced
+##  with wicd and even that was not to be trusted:  the command line ifup etc.
+##  also had to work.
+##
+##  This led to this script having two halves:  the first replaced the network
+##  manager with wicd, the second half configured /etc/network with interface
+##  definitions.
+##
+##  The configuration of /etc/network was for a long time a bit of a bodge.  It
+##  relied on the user/administrator switching between configurations by hand
+##  whenever necessary.  Although this involved only changing a symbolic link
+##  it was viewed as a poor do and was increasingly annoying for the laptop as
+##  it was being used at both home and work.
+##
+##  Overtime, the sophistication of /etc/network/interfaces grew to the point
+##  where the laptop installation required a shell script to probe for known
+##  wifi networks and this script need serious revision to cope.
+##
+##  Now it installs a (host specific) /etc/network/interfaces file and inspects
+##  the contents.  It uses the 'source' statements to determine which files
+##  need to be installed in /etc/network/interfaces.d.
+##
+##  Once this mechanism has been proven robust enough for all hosts, the old
+##  steps will be removed.
+##
+##  Catch-22 warning:  bridge network operation is required on hosts that may
+##  run virtual machines.  This script is run long before that which installs
+##  kvm and its dependencies.  Currently the user/administrator must know to
+##  run the netBridgeInstall step before netInterfaces and then to tweak by
+##  hand the wicd configuration.
 ##
 
 function defineSteps
