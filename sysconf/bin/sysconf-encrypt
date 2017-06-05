@@ -5,7 +5,41 @@
 ##
 ##  Use:    source sysconf-encrypt
 ##
-##  NB:     The caller must source functions etc à la sysconf script.
+##          encryptConf step-number-or-name
+##
+##  NB:     This script is expected to be sourced by the sysconf script:
+##          it is not expected to be used standalone.
+##
+##  This script is concerned with volume encryption using LUKS.
+##
+##  While hosts have had an encrypted volume for several releases now, the
+##  encrypted volumes are still not used.  There is a serious intention this
+##  release to encrypt data volumes on the laptop that might leave the premises.
+##
+##  Previous releases had one encrypted volume per host created during the
+##  installation of the OS.  This was problematic:  the installation wanted to
+##  encrypt swap and boot asked for the LUKS passphrase.
+##
+##  To circumvent the passphrase problem, the first version of this script had
+##  mount/umount steps that include starting/stopping the cryptdisk service
+##  and a configure step that installed a configuration with 'noauto' so the
+##  service was not started at boot.
+##
+##  To circumvent the swap encryption problem, the next release only reserved
+##  a partition for use as an encrypted volume and new steps to install the
+##  cryptdisk service and set up the encrypted volume from scratch were added
+##  to this script.
+##
+##  For this release, a step was added to create the encrypted volume on the
+##  LVM and the steps to set up LUKS and mount/unmount encrypted volumes were
+##  revised so they are driven from the /etc/crypttab file.
+##
+##  This prepares the ground for more that one encrypted volume per host but
+##  more work will be needed.
+##
+##  Catch-22 warning:  for step blkdevFstab to generate an /etc/fstab with
+##  entries that allow encrypted volumes to be mounted, the cryptdisk service
+##  must be running.
 ##
 
 function defineSteps
