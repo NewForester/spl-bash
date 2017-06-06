@@ -5,7 +5,30 @@
 ##
 ##  Use:    source sysconf-ssh
 ##
-##  NB:     The caller must source functions etc à la sysconf script.
+##          sshConf step-number-or-name
+##
+##  NB:     This script is expected to be sourced by the sysconf script:
+##          it is not expected to be used standalone.
+##
+##  This script is concerned principally with configuring ssh.
+##
+##  The idea is that all hosts have a common /etc/ssh/ssh_known_hosts in which
+##  the server keys for all hosts are stored.  This avoids 'unknown do you want
+##  to continue' messages.
+##
+##  Each new installation generates a new set of keys but the old set are
+##  carried forward.  It was thought this would lead to less disruption.  For
+##  the current release, dsa keys are being replaced by ecdsa keys anyway.  As
+##  each host is upgraded, the /etc/ssh/ssh_known_hosts will be updated and
+##  will have to be propagated to all hosts, upgraded or not.
+##
+##  This script also installs and configures an rsync server, which is used to
+##  backup up entire logical volume over the LAN.
+##
+##  The script also has steps for installing rsh.  At one time it was thought
+##  that rsh, without the encryption of ssh, would be a better choice for rsync
+##  backups but trials were inconclusive.  Until a clearly superior solution is
+##  found, these steps remain just in case they are needed again.
 ##
 
 function defineSteps
