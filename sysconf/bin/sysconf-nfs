@@ -5,7 +5,18 @@
 ##
 ##  Use:    source sysconf-nfs
 ##
-##  NB:     The caller must source functions etc à la sysconf script.
+##          nfsConf step-number-or-name
+##
+##  NB:     This script is expected to be sourced by the sysconf script:
+##          it is not expected to be used standalone.
+##
+##  This script configures the host as either an NFS client or server.  In the
+##  case of a server, the /etc/exports file is initialised.  The script does
+##  not know which version(s) of NFS a server supports.
+##
+##  Official policy requires venerable machines be configured as clients but it
+##  remains to be seen if any of these old hosts will be are upgraded this time
+##  around.
 ##
 
 function defineSteps
