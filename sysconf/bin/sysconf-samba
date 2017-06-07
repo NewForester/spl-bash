@@ -5,7 +5,48 @@
 ##
 ##  Use:    source sysconf-samba
 ##
-##  NB:     The caller must source functions etc à la sysconf script.
+##          sambaConf step-number-or-name
+##
+##  NB:     This script is expected to be sourced by the sysconf script:
+##          it is not expected to be used standalone.
+##
+##  This script configures the host as a samba server.
+##
+##  In the days before Linux, disk partitions on all hosts were shared with
+##  other hosts.  When Linux was first installed, all hosts were dual boot
+##  Linux/Windows and policy required that Windows hosts be able to access
+##  shares on other hosts regardless of which OS those host were running.
+##
+##  Hence Linux hosts have been samba servers from the beginning.  Windows
+##  has long since gone except for use in virtual machines and even that use
+##  is seldom.  However, Linux hosts are still samba servers.
+##
+##  At one time, the upgrade of samba software, including the configuration
+##  file, was frequent.  The installation was complex and so a script was
+##  written to assist.  This was the genesis of the sysconf suite.
+##
+##  The samba configuration is more complex than that of any other service.
+##  Witness the length of the function smbUpdate().
+##
+##  Four distinct upgrade scenarios are recognised.  The sambaConfigure step
+##  is run first and it suggests which scenario is pertinent and the user is
+##  then expected to run one of four steps to generate a new configuration.
+##  This is defensive programming.
+##
+##  Each of these steps calls smbUpdate() with a parameter indicating which
+##  scenario to play out.  This is used at the beginning to determine the
+##  initial starting conditions.
+##
+##  The samba configuration is then generated and compared with the old one.
+##  Many changes to the configuration 'source' have no effect on the final
+##  configuration but (certainly at one time) the deployed configuration may
+##  have been over written.  If the final configuration does appear to have
+##  changed, the differences are displayed.
+##
+##  In all cases, the user has the final say as to whether to deploy.  Should
+##  the user decide not to (because one or other of the input files needs a
+##  bit more tweaking), they are free to try again by running sambaConfigure
+##  when they are ready.
 ##
 
 function defineSteps
