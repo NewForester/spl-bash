@@ -5,7 +5,28 @@
 ##
 ##  Use:    source sysconf-automounter
 ##
-##  NB:     The caller must source functions etc à la sysconf script.
+##          automounterConf step-number-or-name
+##
+##  NB:     This script is expected to be sourced by the sysconf script:
+##          it is not expected to be used standalone.
+##
+##  This script configures the automounter so that NFS volumes are mounted on
+##  demand (and unmounted again when idle).
+##
+##  The script automount.logical.volumes does all the clever run-time stuff.
+##  All the automounter needs to know is when to call the script.
+##
+##  The mechanics of this is hidden in createAutomounterGroups() but this
+##  is passed a list, which this script constructs.
+##
+##  In principle, which volumes the automounter can mount over the network
+##  is dynamic:  all that is needed here is an initial list.
+##
+##  At least this is the excuse for using a broken heuristic to construct the
+##  list.  Rather than build a list of the volumes this host might need to
+##  import (which can't be done), it builds a list of the volumes this host
+##  might export. This was a good proxy at one time but, alas, is now no more
+##  than a crude guess.
 ##
 
 function defineSteps
