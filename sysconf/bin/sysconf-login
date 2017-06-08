@@ -5,7 +5,15 @@
 ##
 ##  Use:    source sysconf-login
 ##
-##  NB:     The caller must source functions etc à la sysconf script.
+##          loginConf step-number-or-name
+##
+##  NB:     This script is expected to be sourced by the sysconf script:
+##          it is not expected to be used standalone.
+##
+##  This script configures the login manager of different desktops.
+##
+##  It was added primarily in response to the shift to lightdm one release ago
+##  and now appears redundant given the switch to LXDE on slim.
 ##
 
 function defineSteps
