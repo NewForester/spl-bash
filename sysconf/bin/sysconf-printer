@@ -5,7 +5,20 @@
 ##
 ##  Use:    source sysconf-printer
 ##
-##  NB:     The caller must source functions etc à la sysconf script.
+##          printerConf step-number-or-name
+##
+##  NB:     This script is expected to be sourced by the sysconf script:
+##          it is not expected to be used standalone.
+##
+##  This script is concerned with the configuration of printer devices.
+##
+##  The first step installs pertinent software for the HP printer downstairs.
+##
+##  The second step copies over configuration files only one of which is checked
+##  but this is sufficient to confirm the printer has been configured.
+##
+##  Oddly, this configuration file was updated at least twice under the previous
+##  operating system.  By what and why ?
 ##
 
 function defineSteps
