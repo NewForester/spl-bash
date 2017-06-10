@@ -5,7 +5,17 @@
 ##
 ##  Use:    source sysconf-lang
 ##
-##  NB:     The caller must source functions etc à la sysconf script.
+##          langConf step-number-or-name [module]
+##
+##  where module is a Python/PHP/Perl module to be installed from the pertinent
+##  language repositories rather than the Linux distribution's repositories.
+##
+##  NB:     This script is expected to be sourced by the sysconf script:
+##          it is not expected to be used standalone.
+##
+##  This script is comparatively new.  It installs programming languages and
+##  the means to install modules / packages / applications written in a number
+##  of scripting languages.
 ##
 
 function defineSteps
