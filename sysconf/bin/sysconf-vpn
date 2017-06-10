@@ -5,7 +5,19 @@
 ##
 ##  Use:    source sysconf-vpn
 ##
-##  NB:     The caller must source functions etc à la sysconf script.
+##          vpnConf step-number-or-name
+##
+##  NB:     This script is expected to be sourced by the sysconf script:
+##          it is not expected to be used standalone.
+##
+##  This script install VPN software, configures it and will deploy keys
+##  and certificates so the VPN is operational.
+##
+##  This script will not generate a new set of keys but may do so in the
+##  near future.
+##
+##  The vpnNoAutostart is intended for use on satellite hosts where it there
+##  is no good reason to run the VPN all the time.
 ##
 
 function defineSteps
