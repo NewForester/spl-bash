@@ -5,7 +5,32 @@
 ##
 ##  Use:    source sysconf-mail
 ##
-##  NB:     The caller must source functions etc à la sysconf script.
+##          mailConf step-number-or-name
+##
+##  NB:     This script is expected to be sourced by the sysconf script:
+##          it is not expected to be used standalone.
+##
+##  This is a comparatively new script and may well undergo further development.
+##
+##  The exim4 MTA is part of the standard distribution.  Its main job seems to
+##  to forward mail for root to the non-root administrator account.
+##
+##  What is wanted is for such local mail for all users to be forwarded to the
+##  e-mail server and be delivered to regular Thunderbird e-mail accounts.
+##
+##  This second requires the installation and configuration of a mail delivery
+##  agent (dovecot was chosen).
+##
+##  This is the second version of this script:  the first was clearly a first
+##  working version.  It was a big factor behind adding parameter substitution
+##  the the Deploy() function but there are still issues.
+##
+##  One is that the exim4 configuration already contains the host name so the
+##  patch required here is at present host specific.
+##
+##  The other is the /etc/aliases file that is also altered by the installation
+##  of anti-virus software.  As it stands, the principle that steps can be run
+##  again is violated.
 ##
 
 function defineSteps
