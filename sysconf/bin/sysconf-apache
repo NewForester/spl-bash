@@ -5,7 +5,24 @@
 ##
 ##  Use:    source sysconf-apache
 ##
-##  NB:     The caller must source functions etc à la sysconf script.
+##          apacheConf step-number-or-name
+##
+##  NB:     This script is expected to be sourced by the sysconf script:
+##          it is not expected to be used standalone.
+##
+##  This script installs the apache web server.  The configure step disables
+##  the server.  At present, apache is not unused and, at the time this script
+##  was written, unwanted.
+##
+##  Several web services are installed and run as stand alone servers.  The
+##  previous release, however, introduced dependencies that meant apache was
+##  install and set to run whether it this was wanted or not.
+##
+##  It was decided to deliberately install apache and disable it.
+##
+##  This release, the dependencies have been removed and the installation of
+##  apache is now optional.  However the script is retained in anticipation
+##  of using the apache web-server for real.
 ##
 
 function defineSteps
