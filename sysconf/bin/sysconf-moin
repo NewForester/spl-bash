@@ -5,7 +5,29 @@
 ##
 ##  Use:    source sysconf-moin
 ##
-##  NB:     The caller must source functions etc à la sysconf script.
+##          moinConf step-number-or-name
+##
+##  NB:     This script is expected to be sourced by the sysconf script:
+##          it is not expected to be used standalone.
+##
+##  This script will install and configure moinmoin software.  It will set up a
+##  standalone moinmoin server to service a wiki farm.  It can create new wikis
+##  and restore existing wikis from backup.  It is a comparatively long.
+##
+##  The moinInstall and moinConfigure steps install the moinmoin software and
+##  install our own init.d script to start/stop a standalone moinmoin server.
+##
+##  The moinMyWiki step configures a wiki farm and a first wiki in that farm.
+##  The next step ensures the English language help pages in installed in the
+##  new wiki.  These help page will be used by all other wikis in the farm
+##  ensuring they have up to date help text.  This first wiki is otherwise not
+##  used.
+##
+##  These two steps may also be seen as confidence building and, so indirectly,
+##  as testing.
+##
+##  The other steps are concerned with creating or restoring further wikis.  At
+##  present each wiki has its own step.  This will change soon.
 ##
 
 function defineSteps
