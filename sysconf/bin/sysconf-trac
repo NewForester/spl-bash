@@ -5,7 +5,35 @@
 ##
 ##  Use:    source sysconf-trac
 ##
-##  NB:     The caller must source functions etc à la sysconf script.
+##          tracConf step-number-or-name [project]
+##
+##  NB:     This script is expected to be sourced by the sysconf script:
+##          it is not expected to be used standalone.
+##
+##  This script will install and configure trac software.  It can also create/
+##  restore trac projects, install plugins and configure new projects.
+##
+##  The tracInstall and tracConfigure steps install the trac software and
+##  install our own init.d script to start/stop a standalone trac server.  The
+##  tracUsers steps allow for the creation or update of the users/passwords
+##  file but the file itself must be copied over manually.
+##
+##  The remaining steps are specific to a particular trac environment (aka
+##  project) whose name is passed in as a second argument.
+##
+##  There are steps to create a new project and restore an existing one from
+##  backup.  The restore includes an upgrade (of the project database).  The
+##  steps to add permissions and configure the ini files are pertinent for new
+##  projects.
+##
+##  The check steps are there to build confidence and help test the installation.
+##
+##  The tracPluginBlog and tracPluginChild install and configure plug-ins for
+##  trac:  the configuration must be done on a project basis but not the
+##  installation.
+##
+##  The tracEnumerations step has yet to be implemented.  The intention is to
+##  facilitate the creation of a new project based on an old one.
 ##
 
 function defineSteps
