@@ -5,7 +5,19 @@
 ##
 ##  Use:    source sysconf-avscan
 ##
-##  NB:     The caller must source functions etc à la sysconf script.
+##          avscanConf step-number-or-name
+##
+##  NB:     This script is expected to be sourced by the sysconf script:
+##          it is not expected to be used standalone.
+##
+##  This script installs and configures the clamav anti-virus software.  It is
+##  a relatively new script so far only used at work.
+##
+##  The configuration installs two scripts of our own.  One suitable for manual
+##  use for one-off scans of directories, file systems and block devices.  The
+##  other will scan all mounted file systems and is intended for use in crontab.
+##
+##  The configuration of crontab is by host specific patch.
 ##
 
 function defineSteps
