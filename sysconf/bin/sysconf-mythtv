@@ -5,7 +5,37 @@
 ##
 ##  Use:    source sysconf-mythtv
 ##
-##  NB:     The caller must source functions etc à la sysconf script.
+##          mythtvConf step-number-or-name
+##
+##  NB:     This script is expected to be sourced by the sysconf script:
+##          it is not expected to be used standalone.
+##
+##  This script is used to install and configure either the server or client
+##  software for mythtv.  This involves the installation and configuration of
+##  mysql server or client software.
+##
+##  It is fraught.
+##
+##  This script is concerned with what must be done under the administrator
+##  account.  See usrconf-mythtv for configuration of the mythtv application,
+##  which is done under the user id telly.
+##
+##  The installation of the server involves the installation of xmltv-util.
+##  This is of no use in this country but it drags in some 64 other packages.
+##
+##  The installation of the mysql server requests the user set a root password.
+##
+##  DO NOT USE A DASH (-) in this password.  The password is required by later
+##  steps and should be retained for future use.
+##
+##  The mysql server and the mythtvdb are configured for LAN use.
+##
+##  The mythtvDvbDriver step ensures the video-mate driver is loaded with the
+##  correct parameters but does not install udev rules to ensure consistent
+##  numbering of DVB adaptors.
+##
+##  The mythtvInstallDvb step install software needed to independently confirm
+##  TV reception and generate a channel list.
 ##
 
 function defineSteps
