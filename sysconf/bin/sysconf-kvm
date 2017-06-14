@@ -5,17 +5,29 @@
 ##
 ##  Use:    source sysconf-kvm
 ##
-##  For Debian wheezy, we've dropped the installation of qemu proper.
+##          kvmConf step-number-or-name
 ##
-##  With it go vde and dnsmasq and the associated configuration for
-##  which we never really found any practical use.
+##  NB:     This script is expected to be sourced by the sysconf script:
+##          it is not expected to be used standalone.
 ##
-##  The redundant lines are simply commented out for now.
+##  This script installs and sets up kvm to provide the capability to run
+##  guest operating systems in virtual machines.  It changes substantially
+##  with each release.
 ##
-##  Setting up the bridged network interface is handled by sysconf-net.
-##  Adding kvm group membership is handled by usrconf.group.
+##  vde and dnsmasq were prerequisites for earlier releases but are no longer:
+##  they are no longer installed by this script.
 ##
-##  NB:     The caller must source functions etc à la sysconf script.
+##  qemu was also once a prerequisite but not longer.  This script still has
+##  steps to install and setup qemu.
+##
+##  The setup is concerned with ensuring kvm/qenu machines have network access.
+##  At the last release, duff scripts were installed that had to be suppressed.
+##  These have been withdrawn for the present release.
+##
+##  The bridge-utils package is a requirement for kvm but this is now dealt
+##  with in sysconf-net.
+##
+##  Thus the set-up steps currently do very little.
 ##
 
 function defineSteps
