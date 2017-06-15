@@ -5,7 +5,20 @@
 ##
 ##  Use:    source sysconf-apps
 ##
-##  NB:     The caller must source functions etc à la sysconf script.
+##          appsConf step-number-or-name
+##
+##  NB:     This script is expected to be sourced by the sysconf script:
+##          it is not expected to be used standalone.
+##
+##  This script ensures the principal applications are installed with plug-ins
+##  and other goodies.  It is unclear how much benefit is derived from them.
+##
+##  What is chosen for installation and how they are installed changes slightly
+##  with each release.
+##
+##  The steps for installing pidgin and davmail have only ever been used at
+##  work and the latter may well have changed a great deal the next time it
+##  is needed.
 ##
 
 function defineSteps
