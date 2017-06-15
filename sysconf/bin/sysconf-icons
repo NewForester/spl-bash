@@ -5,7 +5,20 @@
 ##
 ##  Use:    source sysconf-icons
 ##
-##  NB:     The caller must source functions etc à la sysconf script.
+##          iconsConf step-number-or-name
+##
+##  NB:     This script is expected to be sourced by the sysconf script:
+##          it is not expected to be used standalone.
+##
+##  This script has steps for installing .desktop files for three applications
+##
+##      mythtv, eclipse and Windows (in a VM)
+##
+##  because there was no default or the default was unsatisfactory.
+##
+##  The steps exist so that nice entries with icons can be made to appear on
+##  the KDE favourites menu.  How useful these steps are under XFCE remains to
+##  be seen.
 ##
 
 function defineSteps
