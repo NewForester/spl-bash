@@ -5,7 +5,23 @@
 ##
 ##  Use:    source sysconf-plugins
 ##
-##  NB:     The caller must source functions etc à la sysconf script.
+##          pluginsConf step-number-or-name
+##
+##  NB:     This script is expected to be sourced by the sysconf script:
+##          it is not expected to be used standalone.
+##
+##  This script has one step for installing desktop plugins for XFCE.
+##
+##  At the time of its creation, they may have been an idea of regrouping the
+##  installation of plugins for all application software here but that idea no
+##  longer has any traction.
+##
+##  At the time of its creation, XFCE was only used on venerable machines and,
+##  it seems, not all the required plug-ins were installed.
+##
+##  In principle, this steps ensures all the required plug-ins are installed
+##  regardless of what the distribution installs by default.  In practice, the
+##  names of the plug-ins may change between releases.
 ##
 
 function defineSteps
