@@ -5,11 +5,24 @@
 ##
 ##  Use:    source usrconf-bootstrap
 ##
-##  NB: The caller must source functions etc à la usrconf script.
+##          bootstrapConf step-number-or-name
 ##
-##  The first step must be executed by-hand (copy/paste in to a console)
-##  to set up an environment in which the rest of user configuration can
-##  be executed in a semi-automatic fashion.
+##  NB:     This script is expected to be sourced by the usrconf script:
+##          it is not expected to be used standalone.
+##
+##  This script sets things up so usrconf can be run from the command line.
+##
+##  The first step must be run by hand.  The most convenient way of doing this
+##  is to login in to the host to be configured using ssh and copy and paste
+##  from this script into the ssh tty.
+##
+##  Copy and paste the lines between the parentheses that appear after the note
+##  statement.  Make sure the final echo is executed.  This confirms the code
+##  just pasted executed successfully and tells you what to do next.
+##
+##  The second step requires usrconf be run the hard way but once you have then
+##  logged out and back in again, usrconf is on the path and may be run from
+##  the command line as conveniently as any other command.
 ##
 
 function defineSteps
