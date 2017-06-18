@@ -5,7 +5,21 @@
 ##
 ##  Use:    source usrconf-ssh
 ##
-##  NB:     The caller must source functions etc à la usrconf script.
+##          sshConf step-number-or-name
+##
+##  NB:     This script is expected to be sourced by the usrconf script:
+##          it is not expected to be used standalone.
+##
+##  This script has only two steps.
+##
+##  The first may be used to create a new ssh key for the current user/host.
+##  This updates the master configuration, not the local configuration.
+##
+##  The second may be used after the first to update the local configuration.
+##  It should be run on each host on which the user has a login.
+##
+##  This current version of the script supports the replacement of dsa keys
+##  by ecdsa keys.
 ##
 
 function defineSteps
@@ -35,7 +49,7 @@ function sshConf
 
       ($sshNewKey | sshNewKey)
         step="$sshNewKey sshNewKey";
-        note "Generate new ssh key for ${USER} ...";
+        note "Generate new ssh key for ${ls} ...";
 
         DoOrDie mkdir -p "${installUser}/.ssh";
 
