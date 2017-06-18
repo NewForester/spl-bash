@@ -5,7 +5,17 @@
 ##
 ##  Use:    source usrconf-group
 ##
-##  NB:     The caller must source functions etc à la usrconf script.
+##          groupConf step-number-or-name
+##
+##  NB:     This script is expected to be sourced by the usrconf script:
+##          it is not expected to be used standalone.
+##
+##  This script allow the current user to be added to one or more groups that
+##  then allow the user access to certain system/application services without
+##  the use of sudo.
+##
+##  For example, adding the user to the kvm script allows the user to start and
+##  stop virtual machines that need to tap into the network bridge.
 ##
 
 function defineSteps
