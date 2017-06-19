@@ -5,7 +5,28 @@
 ##
 ##  Use:    source usrconf-kde
 ##
-##  NB:     The caller must source functions etc à la usrconf script.
+##          kdeConf step-number-or-name
+##
+##  NB:     This script is expected to be sourced by the usrconf script:
+##          it is not expected to be used standalone.
+##
+##  This script provides an initial configuration for the user's KDE desktop.
+##  The desktop should not be running when this script is executed.
+##
+##  After applying a generic configuration, a desktop / laptop overlay may be
+##  applied (in practice this affects the power management configuration).
+##
+##  Next the screen saver is configured.  There is considerable flexibility as
+##  to where the configuration is sourced allowing, for example, for a user
+##  specific configuration to override a more generic configuration.
+##
+##  Further steps allow the desktop configuration to be further customised on a
+##  release, distribution, host and user basis.  Most of these steps are empty.
+##
+##  The next steps allow for remote login using a VNC client.
+##
+##  The final sets allow for the customisation of the 'favourites' menu with
+##  entries for applications not of general interest to all users.
 ##
 
 function defineSteps
