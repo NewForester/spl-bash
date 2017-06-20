@@ -5,11 +5,17 @@
 ##
 ##  Use:    source usrconf-office
 ##
-##          officeConf step [version]
+##          officeConf step-number-or-name [version]
 ##
-##  where [version] defaults to 3 but can be given as 4
+##  where [version] defaults to 4 but can be given as 3
 ##
-##  NB:     The caller must source functions etc à la usrconf script.
+##  NB:     This script is expected to be sourced by the usrconf script:
+##          it is not expected to be used standalone.
+##
+##  This script configures LibreOffice for the current user by providing steps
+##  to update the local user profile with the site scripts and addins and the
+##  the user's personal configuration data carried forward from the previous
+##  installation.
 ##
 
 function defineSteps
