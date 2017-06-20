@@ -5,7 +5,21 @@
 ##
 ##  Use:    source usrconf-mozilla
 ##
-##  NB:     The caller must source functions etc à la usrconf script.
+##          mozillaConf step-number-or-name
+##
+##  NB:     This script is expected to be sourced by the usrconf script:
+##          it is not expected to be used standalone.
+##
+##  This script configures Mozilla applications (Firefox and Thunderbird) by
+##  providing steps to install user data to be carried forward (prepared in
+##  advance by ad-hoc means beyond the scope of this script).
+##
+##  There is also a step to install the flash plug-in (again, carried forward)
+##  for Firefox.
+##
+##  There are also steps to turn on/off roaming for Thunderbird.  Essentially
+##  these change the delete from server options.  In practice, configurations
+##  on laptops are left permanently in roaming mode.
 ##
 
 function defineSteps
