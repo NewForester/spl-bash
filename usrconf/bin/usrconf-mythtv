@@ -5,7 +5,24 @@
 ##
 ##  Use:    source usrconf-mythtv
 ##
-##  NB:     The caller must source functions etc à la usrconf script.
+##          mythtvConf step-number-or-name
+##
+##  NB:     This script is expected to be sourced by the usrconf script:
+##          it is not expected to be used standalone.
+##
+##  This script has steps for the 'user' set up and configuration of mythTV.
+##  That is steps that do not require root privilege and so may be run as
+##  part of the set up and configuration of a tv user id.
+##
+##  There are steps that verify the hardware is functioning correctly.  These
+##  do not use mythTV at all but do provide a channel list for its use.
+##
+##  There is a step to run the mythTV set up program in order to configure the
+##  application from scratch.  There is another step to restore the previous
+##  set up from a backup of the mythTV database.
+##
+##  The steps themselves look quite simple but they rely heavily on non-trivial
+##  external scripts and programs.
 ##
 
 function defineSteps
